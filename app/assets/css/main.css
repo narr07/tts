@@ -1,0 +1,53 @@
+@import url('https://fonts.googleapis.com/css2?family=Baloo+2:wght@400..800&family=Fredoka:wght@300..700&display=swap');
+@import 'tailwindcss';
+@import '@nuxt/ui';
+
+@theme {
+	--font-sans: 'Fredoka', sans-serif;
+	--font-serif: 'Baloo 2', sans-serif;
+}
+
+@layer base {
+	h1,
+	h2,
+	h3,
+	h4,
+	h5,
+	h6 {
+		font-family: var(--font-serif);
+	}
+}
+
+:root {
+	--ui-radius: 0.2rem;
+}
+
+/* Pastikan semua modal dialog dan backdrop selalu berada di lapisan paling depan */
+[role='dialog'] {
+	z-index: 100 !important;
+	background-color: #ffffff !important;
+}
+
+.dark [role='dialog'] {
+	background-color: #171717 !important;
+}
+
+[data-state='open']:not([role='dialog']) {
+	z-index: 90 !important;
+}
+
+/* Custom educational scrollbar */
+::-webkit-scrollbar {
+	width: 6px;
+	height: 6px;
+}
+::-webkit-scrollbar-track {
+	background: transparent;
+}
+::-webkit-scrollbar-thumb {
+	background: rgba(156, 163, 175, 0.5);
+	border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+	background: rgba(107, 114, 128, 0.8);
+}

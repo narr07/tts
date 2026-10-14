@@ -1,7 +1,98 @@
 import { db } from 'hub:db'
 import { sql } from 'drizzle-orm'
+import { hashPassword } from 'better-auth/crypto'
+
+defineRouteMeta({
+	openAPI: {
+		tags: ['Admin'],
+		operationId: 'updateUser',
+		summary: 'Ubah data pengguna',
+		security: [
+			{
+				bearerAuth: []
+			},
+			{
+				cookieAuth: []
+			}
+		],
+		description: 'Khusus admin. Mengubah peran atau sandi membuat pengguna itu harus masuk ulang. Akun admin tidak bisa diturunkan perannya.',
+		requestBody: {
+			required: true,
+			content: {
+				'application/json': {
+					schema: {
+						type: 'object',
+						properties: {
+							name: {
+								type: 'string'
+							},
+							email: {
+								type: 'string'
+							},
+							schoolName: {
+								type: 'string'
+							},
+							grade: {
+								type: 'integer'
+							},
+							nisn: {
+								type: 'string'
+							},
+							totalXp: {
+								type: 'integer'
+							},
+							totalStars: {
+								type: 'integer'
+							},
+							role: {
+								$ref: '#/components/schemas/Role'
+							},
+							password: {
+								type: 'string',
+								format: 'password'
+							}
+						}
+					}
+				}
+			}
+		},
+		responses: {
+			200: {
+				description: 'Tersimpan',
+				content: {
+					'application/json': {
+						schema: {
+							type: 'object',
+							properties: {
+								success: {
+									type: 'boolean'
+								},
+								user: {
+									$ref: '#/components/schemas/User'
+								}
+							}
+						}
+					}
+				}
+			},
+			400: {
+				$ref: '#/components/responses/BadRequest'
+			},
+			401: {
+				$ref: '#/components/responses/Unauthorized'
+			},
+			403: {
+				$ref: '#/components/responses/Forbidden'
+			},
+			404: {
+				$ref: '#/components/responses/NotFound'
+			}
+		}
+	}
+})
 
 export default defineEventHandler(async (event) => {
+	await requireRole(event, ['admin'])
 	const id = getRouterParam(event, 'id')
 	const body = await readBody(event)
 
@@ -35,8 +126,15 @@ export default defineEventHandler(async (event) => {
 	const role = body.role !== undefined ? String(body.role).trim() : null
 	const password = body.password ? String(body.password).trim() : null
 
-	// Lindungi role super admin utama agar tidak bisa diturunkan
-	const finalRole = existingUser.email === 'dinarpermadi07@gmail.com' ? 'admin' : (role || existingUser.role)
+	if (role && !APP_ROLES.includes(role as AppRole)) {
+		throw createError({
+			statusCode: 400,
+			statusMessage: 'Peran tidak dikenal.'
+		})
+	}
+
+	// Akun admin tidak bisa diturunkan dari sini, supaya admin terakhir tidak terkunci di luar
+	const finalRole = existingUser.role === 'admin' ? 'admin' : (role || existingUser.role)
 
 	// Update user data
 	await db.run(sql`
@@ -58,9 +156,14 @@ export default defineEventHandler(async (event) => {
 	if (password) {
 		await db.run(sql`
 			UPDATE "account"
-			SET password = ${password}, "updatedAt" = ${Date.now()}
-			WHERE "userId" = ${id}
+			SET password = ${await hashPassword(password)}, "updatedAt" = ${Date.now()}
+			WHERE "userId" = ${id} AND "providerId" = 'credential'
 		`)
+	}
+
+	// Sesi lama masih membawa peran lama, jadi pengguna ini harus masuk ulang
+	if (password || finalRole !== existingUser.role) {
+		await db.run(sql`DELETE FROM "session" WHERE "userId" = ${id}`)
 	}
 
 	const updated = await db.all(sql`

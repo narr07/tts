@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useCrosswordStore } from '~/stores/crosswordStore'
-import { cellKey, type PlacedWord } from '~/utils/crossword'
+import type { PlacedWord } from '~/utils/crossword'
 
 const store = useCrosswordStore()
 
@@ -41,7 +41,7 @@ function isWordSolved(p: PlacedWord) {
 		const r = p.row + dr * k
 		const c = p.col + dc * k
 		const input = store.userInputs[r]?.[c] || ''
-		if (input.toUpperCase() !== p.answer[k].toUpperCase()) {
+		if (input.toUpperCase() !== (p.answer[k] ?? '').toUpperCase()) {
 			return false
 		}
 	}
@@ -83,13 +83,13 @@ function selectClue(p: PlacedWord) {
 					]"
 					@click="selectClue(p)"
 				>
-					<span class="font-extrabold text-amber-600 dark:text-amber-400 min-w-[20px]">
+					<span class="font-extrabold text-amber-700 dark:text-amber-400 min-w-[20px]">
 						{{ p.number }}.
 					</span>
 					<span
 						class="flex-1 leading-snug"
 						:class="{
-							'line-through text-neutral-400 dark:text-neutral-500': isWordSolved(p)
+							'line-through text-toned': isWordSolved(p)
 						}"
 					>
 						{{ p.clue }}
@@ -127,13 +127,13 @@ function selectClue(p: PlacedWord) {
 					]"
 					@click="selectClue(p)"
 				>
-					<span class="font-extrabold text-sky-600 dark:text-sky-400 min-w-[20px]">
+					<span class="font-extrabold text-sky-700 dark:text-sky-400 min-w-[20px]">
 						{{ p.number }}.
 					</span>
 					<span
 						class="flex-1 leading-snug"
 						:class="{
-							'line-through text-neutral-400 dark:text-neutral-500': isWordSolved(p)
+							'line-through text-toned': isWordSolved(p)
 						}"
 					>
 						{{ p.clue }}

@@ -30,34 +30,34 @@ const currentTab = computed<TabType>({
 		<div class="min-h-screen flex flex-col bg-neutral-50 dark:bg-neutral-950 text-neutral-900 dark:text-neutral-100 font-sans transition-colors duration-200">
 			<!-- Header Utama -->
 			<header class="sticky top-0 z-40 border-b border-neutral-200/80 dark:border-neutral-800 bg-white/95 dark:bg-neutral-900/95 backdrop-blur-md">
-				<div class="max-w-7xl mx-auto px-3 sm:px-6 h-16 flex items-center justify-between gap-2 sm:gap-4">
+				<!-- Di bawah lg, nav turun ke baris kedua supaya logo, nav, dan tombol akun tidak berdesakan -->
+				<div class="max-w-7xl mx-auto px-3 sm:px-6 py-2 lg:py-0 lg:h-16 flex flex-wrap lg:flex-nowrap items-center justify-between gap-2 sm:gap-4">
 					<!-- Logo & Brand -->
 					<div
 						class="flex items-center gap-2.5 cursor-pointer shrink-0 select-none"
 						@click="currentTab = 'path'"
 					>
-						<div class="w-10 h-10 rounded-2xl bg-primary text-white flex items-center justify-center shadow-md shadow-primary/20 font-black text-xl">
+						<div class="w-10 h-10 rounded-2xl bg-primary text-inverted flex items-center justify-center shadow-md shadow-primary/20 font-black text-xl">
 							🧩
 						</div>
 						<div>
 							<h1 class="font-black text-base sm:text-lg tracking-tight leading-tight flex items-center gap-1.5">
 								<span>Petualangan Kata SD</span>
-								<span class="px-2 py-0.5 rounded-md text-[10px] font-black bg-amber-100 text-amber-900 dark:bg-amber-950 dark:text-amber-200 border border-amber-300 dark:border-amber-800">
+								<span class="hidden sm:inline px-2 py-0.5 rounded-md text-[10px] font-black bg-amber-100 text-amber-900 dark:bg-amber-950 dark:text-amber-200 border border-amber-300 dark:border-amber-800">
 									Kelas 1-6
 								</span>
 							</h1>
-							<p class="text-[10px] sm:text-xs text-neutral-500 dark:text-neutral-400 hidden sm:block">
+							<p class="text-[10px] sm:text-xs text-muted hidden sm:block">
 								Teka-Teki Silang Tematik Kurikulum Merdeka
 							</p>
 						</div>
 					</div>
 
 					<!-- Navigation Tabs -->
-					<nav aria-label="Navigasi Utama" class="flex items-center gap-1 p-1 bg-neutral-100 dark:bg-neutral-800 rounded-xl overflow-x-auto max-w-full">
+					<nav aria-label="Navigasi Utama" class="order-last lg:order-none w-full lg:w-auto min-w-0 flex items-center gap-1 p-1 bg-neutral-100 dark:bg-neutral-800 rounded-xl overflow-x-auto">
 						<button
 							type="button"
-							role="tab"
-							:aria-selected="currentTab === 'path'"
+							:aria-current="currentTab === 'path' ? 'page' : undefined"
 							class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all shrink-0 cursor-pointer"
 							:class="currentTab === 'path' ? 'bg-white dark:bg-neutral-700 shadow-sm text-primary dark:text-primary-400' : 'text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-neutral-100'"
 							@click="currentTab = 'path'"
@@ -68,8 +68,7 @@ const currentTab = computed<TabType>({
 
 						<button
 							type="button"
-							role="tab"
-							:aria-selected="currentTab === 'play'"
+							:aria-current="currentTab === 'play' ? 'page' : undefined"
 							class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all shrink-0 cursor-pointer"
 							:class="currentTab === 'play' ? 'bg-white dark:bg-neutral-700 shadow-sm text-primary dark:text-primary-400' : 'text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-neutral-100'"
 							@click="currentTab = 'play'"
@@ -80,8 +79,7 @@ const currentTab = computed<TabType>({
 
 						<button
 							type="button"
-							role="tab"
-							:aria-selected="currentTab === 'leaderboard'"
+							:aria-current="currentTab === 'leaderboard' ? 'page' : undefined"
 							class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all shrink-0 cursor-pointer"
 							:class="currentTab === 'leaderboard' ? 'bg-white dark:bg-neutral-700 shadow-sm text-primary dark:text-primary-400' : 'text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-neutral-100'"
 							@click="currentTab = 'leaderboard'"
@@ -94,8 +92,7 @@ const currentTab = computed<TabType>({
 						<button
 							v-if="auth.isTeacher"
 							type="button"
-							role="tab"
-							:aria-selected="currentTab === 'admin'"
+							:aria-current="currentTab === 'admin' ? 'page' : undefined"
 							class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all shrink-0 cursor-pointer"
 							:class="currentTab === 'admin' ? 'bg-white dark:bg-neutral-700 shadow-sm text-primary dark:text-primary-400' : 'text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-neutral-100'"
 							@click="currentTab = 'admin'"
@@ -108,8 +105,7 @@ const currentTab = computed<TabType>({
 						<button
 							v-if="auth.isAdmin"
 							type="button"
-							role="tab"
-							:aria-selected="currentTab === 'users'"
+							:aria-current="currentTab === 'users' ? 'page' : undefined"
 							class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all shrink-0 cursor-pointer"
 							:class="currentTab === 'users' ? 'bg-white dark:bg-neutral-700 shadow-sm text-primary dark:text-primary-400' : 'text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-neutral-100'"
 							@click="currentTab = 'users'"
@@ -130,7 +126,7 @@ const currentTab = computed<TabType>({
 							>
 								<span class="font-extrabold text-amber-700 dark:text-amber-400">⚡ {{ auth.currentUser.totalXp || 0 }} XP</span>
 								<span class="text-neutral-300 dark:text-neutral-700">•</span>
-								<span class="font-bold text-amber-600 dark:text-amber-400">⭐ {{ auth.currentUser.totalStars || 0 }}</span>
+								<span class="font-bold text-amber-700 dark:text-amber-400">⭐ {{ auth.currentUser.totalStars || 0 }}</span>
 							</div>
 
 							<!-- User Badge (Dapat diklik untuk edit profil sendiri) -->
@@ -143,9 +139,9 @@ const currentTab = computed<TabType>({
 								>
 									<p class="font-extrabold text-xs text-neutral-900 dark:text-neutral-100 line-clamp-1 group-hover:text-primary transition-colors flex items-center justify-end gap-1">
 										<span>{{ auth.currentUser.name }}</span>
-										<UIcon name="i-lucide-pencil" class="w-3 h-3 text-neutral-400 group-hover:text-primary" />
+										<UIcon name="i-lucide-pencil" class="w-3 h-3 text-muted group-hover:text-primary" />
 									</p>
-									<p class="text-[10px] text-neutral-500 line-clamp-1">
+									<p class="text-[10px] text-muted line-clamp-1">
 										{{ auth.isAdmin ? 'Super Admin' : auth.isTeacher ? 'Guru Pembimbing' : `Kelas ${auth.currentUser.grade} SD · ${auth.currentUser.schoolName}` }}
 									</p>
 								</button>
@@ -192,18 +188,18 @@ const currentTab = computed<TabType>({
 
 			<!-- Konten Utama -->
 			<main class="flex-1 max-w-7xl w-full mx-auto px-3 sm:px-6 py-6 sm:py-8">
-				<NuxtPage :current-tab="currentTab" @switch-tab="(tab) => currentTab = tab" />
+				<NuxtPage :current-tab="currentTab" @switch-tab="(tab: TabType) => currentTab = tab" />
 			</main>
 
 			<!-- Footer -->
-			<footer class="border-t border-neutral-200/80 dark:border-neutral-800 py-6 text-center text-xs text-neutral-500 bg-white/60 dark:bg-neutral-900/60 backdrop-blur-sm">
+			<footer class="border-t border-neutral-200/80 dark:border-neutral-800 py-6 text-center text-xs text-muted bg-white/60 dark:bg-neutral-900/60 backdrop-blur-sm">
 				<div class="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-3">
 					<div class="flex items-center gap-2">
 						<span class="font-black text-neutral-800 dark:text-neutral-200">🧩 Petualangan Kata SD</span>
 						<span>•</span>
 						<p>Media Pembelajaran Teka-Teki Silang Interaktif Siswa Sekolah Dasar</p>
 					</div>
-					<p class="text-neutral-400 dark:text-neutral-500 text-[11px]">
+					<p class="text-muted text-[11px]">
 						Mendukung Kurikulum Merdeka Fase A, B, dan C
 					</p>
 				</div>

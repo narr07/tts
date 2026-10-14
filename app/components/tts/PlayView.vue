@@ -17,7 +17,7 @@ const store = useCrosswordStore()
 const selectedPuzzleId = ref<string>('')
 
 // Data fetching puzzles list
-const { data: puzzles, refresh } = await useFetch<any[]>('/api/puzzles')
+const { data: puzzles, status, refresh } = await useFetch<any[]>('/api/puzzles')
 
 const timerText = computed(() => {
 	const mins = Math.floor(store.secondsElapsed / 60)
@@ -25,11 +25,22 @@ const timerText = computed(() => {
 	return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`
 })
 
-const { pause, resume } = useIntervalFn(() => {
+const { resume } = useIntervalFn(() => {
 	if (store.isTimerRunning) {
 		store.secondsElapsed++
 	}
 }, 1000, { immediate: false })
+
+const puzzleItems = computed(() =>
+	(puzzles.value ?? []).map(p => ({ label: `[K${p.grade || 1}] ${p.title}`, value: p.id }))
+)
+
+const nextPuzzle = computed(() => {
+	const list = puzzles.value
+	if (!Array.isArray(list)) return null
+	const idx = list.findIndex(p => p.id === selectedPuzzleId.value)
+	return idx >= 0 ? list[idx + 1] ?? null : null
+})
 
 function selectPuzzle(puzzle: any) {
 	if (!puzzle) return
@@ -100,7 +111,7 @@ watch(
 								{{ store.activePuzzle.subject }}
 							</span>
 						</div>
-						<p class="text-xs text-neutral-500 mt-0.5 line-clamp-1">
+						<p class="text-xs text-muted mt-0.5 line-clamp-1">
 							{{ store.activePuzzle?.description || 'Silakan isi kotak teka-teki silang!' }}
 						</p>
 					</div>
@@ -115,16 +126,15 @@ watch(
 					</div>
 
 					<!-- Puzzle Dropdown -->
-					<select
-						v-if="puzzles && puzzles.length > 0"
+					<USelect
+						v-if="puzzleItems.length > 0"
 						v-model="selectedPuzzleId"
-						class="text-xs rounded-lg border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-900 px-3 py-2 font-medium outline-none cursor-pointer max-w-[200px]"
-						@change="selectPuzzle(puzzles.find(p => p.id === selectedPuzzleId))"
-					>
-						<option v-for="p in puzzles" :key="p.id" :value="p.id">
-							[K{{ p.grade || 1 }}] {{ p.title }}
-						</option>
-					</select>
+						:items="puzzleItems"
+						aria-label="Pilih teka-teki"
+						size="sm"
+						class="max-w-[200px]"
+						@update:model-value="(id) => selectPuzzle(puzzles?.find(p => p.id === id))"
+					/>
 
 					<UButton
 						size="sm"
@@ -163,7 +173,11 @@ watch(
 			<!-- Crossword Grid Area (7 cols on desktop) -->
 			<div class="lg:col-span-7 flex flex-col items-center">
 				<UCard class="w-full" :ui="{ body: 'p-2 sm:p-4' }">
-					<CrosswordGrid />
+					<CrosswordGrid
+						:has-next="!!nextPuzzle"
+						@next="selectPuzzle(nextPuzzle)"
+						@back-to-path="emit('backToPath')"
+					/>
 				</UCard>
 			</div>
 
@@ -173,8 +187,25 @@ watch(
 			</div>
 		</div>
 
+		<UAlert
+			v-else-if="status === 'error'"
+			color="error"
+			variant="subtle"
+			icon="i-lucide-circle-alert"
+			title="Teka-teki gagal dimuat"
+			description="Periksa koneksi internet, lalu coba lagi."
+			:actions="[{ label: 'Coba lagi', color: 'error', variant: 'outline', onClick: () => refresh() }]"
+		/>
+
+		<UEmpty
+			v-else-if="status === 'success' && puzzleItems.length === 0"
+			icon="i-lucide-book-open"
+			title="Belum ada teka-teki"
+			description="Guru belum membuat teka-teki silang. Coba buka lagi nanti."
+		/>
+
 		<!-- Loading State -->
-		<div v-else class="p-12 text-center text-neutral-400">
+		<div v-else class="p-12 text-center text-muted">
 			<UIcon name="i-lucide-loader-2" class="w-8 h-8 animate-spin mx-auto text-amber-500 mb-2" />
 			<p class="text-sm">Menyiapkan teka-teki silang...</p>
 		</div>

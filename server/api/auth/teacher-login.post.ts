@@ -1,5 +1,53 @@
 import { db } from 'hub:db'
 import { sql } from 'drizzle-orm'
+import { verifyPassword } from 'better-auth/crypto'
+
+defineRouteMeta({
+	openAPI: {
+		tags: ['Akun'],
+		operationId: 'loginTeacher',
+		summary: 'Masuk sebagai guru atau admin',
+		requestBody: {
+			required: true,
+			content: {
+				'application/json': {
+					schema: {
+						type: 'object',
+						required: ['email', 'password'],
+						properties: {
+							email: {
+								type: 'string',
+								format: 'email'
+							},
+							password: {
+								type: 'string',
+								format: 'password'
+							}
+						}
+					}
+				}
+			}
+		},
+		responses: {
+			200: {
+				description: 'Berhasil masuk',
+				content: {
+					'application/json': {
+						schema: {
+							$ref: '#/components/schemas/AuthResponse'
+						}
+					}
+				}
+			},
+			400: {
+				$ref: '#/components/responses/BadRequest'
+			},
+			401: {
+				$ref: '#/components/responses/Unauthorized'
+			}
+		}
+	}
+})
 
 export default defineEventHandler(async (event) => {
 	const body = await readBody(event)
@@ -19,29 +67,30 @@ export default defineEventHandler(async (event) => {
 	const result = await db.all(sql`
 		SELECT u.id, u.name, u.email, u.role, u.schoolName, a.password as accountPassword
 		FROM "user" u
-		LEFT JOIN "account" a ON a.userId = u.id
+		LEFT JOIN "account" a ON a.userId = u.id AND a.providerId = 'credential'
 		WHERE lower(u.email) = ${cleanEmail} AND (u.role = 'admin' OR u.role = 'teacher')
 		LIMIT 1
 	`)
 
-	if (!result || result.length === 0) {
-		throw createError({
-			statusCode: 401,
-			statusMessage: 'Akun guru/admin tidak ditemukan.'
-		})
-	}
-
 	const user = result[0] as any
+	const passwordOk = user?.accountPassword
+		? await verifyPassword({ hash: user.accountPassword, password: cleanPassword })
+		: false
 
-	if (user.accountPassword !== cleanPassword) {
+	// Pesan disamakan supaya tidak bisa dipakai menebak email mana yang terdaftar
+	if (!passwordOk) {
 		throw createError({
 			statusCode: 401,
-			statusMessage: 'Kata sandi atau PIN salah.'
+			statusMessage: 'Email atau kata sandi salah.'
 		})
 	}
+
+	const session = await startSession(event, user.id)
 
 	return {
 		success: true,
+		token: session.token,
+		expiresAt: session.expiresAt,
 		user: {
 			id: user.id,
 			name: user.name,

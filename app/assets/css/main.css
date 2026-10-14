@@ -22,6 +22,19 @@
 	--ui-radius: 0.2rem;
 }
 
+/* Mode terang: shade 500 bawaan Nuxt UI hanya 1,7 sampai 3,8:1 terhadap putih (sky 2,71, lime 1,95).
+   Shade 700 lolos WCAG AA, baik sebagai teks maupun sebagai latar tombol berteks putih (4,98 sampai 6,03:1).
+   Success (lime) dan warning (amber) memakai 800 karena shade 700 di atas latar badge soft/subtle masih 4,37 sampai 4,38:1.
+   Mode gelap tetap memakai shade 400 bawaan, yang sudah lolos terhadap latar gelap. */
+:root:not(.dark) {
+	--ui-primary: var(--ui-color-primary-700);
+	--ui-secondary: var(--ui-color-secondary-700);
+	--ui-success: var(--ui-color-success-800);
+	--ui-info: var(--ui-color-info-700);
+	--ui-warning: var(--ui-color-warning-800);
+	--ui-error: var(--ui-color-error-700);
+}
+
 /* Pastikan semua modal dialog dan backdrop selalu berada di lapisan paling depan */
 [role='dialog'] {
 	z-index: 100 !important;

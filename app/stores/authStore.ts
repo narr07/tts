@@ -1,6 +1,5 @@
 import { defineStore } from 'pinia'
-import { ref, computed } from 'vue'
-import { useLocalStorage } from '@vueuse/core'
+import { computed } from 'vue'
 
 export interface AppUser {
 	id: string
@@ -16,95 +15,71 @@ export interface AppUser {
 }
 
 export const useAuthStore = defineStore('auth', () => {
-	const currentUser = useLocalStorage<AppUser | null>('tts_auth_user', null)
+	// Sesi dari cookie Better Auth yang dibuat server; peran tidak bisa diubah dari peramban
+	const { user, loggedIn, signOut, fetchSession } = useUserSession()
 
-	const isLoggedIn = computed(() => Boolean(currentUser.value))
+	const currentUser = computed(() => (user.value as AppUser | null) ?? null)
+
+	const isLoggedIn = computed(() => loggedIn.value)
 	const role = computed(() => currentUser.value?.role || 'guest')
-	const isAdmin = computed(() => {
-		return (
-			currentUser.value?.role === 'admin' ||
-			currentUser.value?.email === 'dinarpermadi07@gmail.com'
-		)
-	})
-	const isTeacher = computed(() => {
-		return isAdmin.value || currentUser.value?.role === 'teacher'
-	})
+	const isAdmin = computed(() => currentUser.value?.role === 'admin')
+	const isTeacher = computed(() => isAdmin.value || currentUser.value?.role === 'teacher')
 	const isStudent = computed(() => currentUser.value?.role === 'student')
 
-	async function loginStudent(nisn: string, birthDate: string) {
-		const res = await $fetch<{ success: boolean; user: AppUser }>('/api/auth/student-login', {
-			method: 'POST',
-			body: { nisn, birthDate }
-		})
-
-		if (res.success && res.user) {
-			currentUser.value = res.user
-		}
-		return res
+	function loginStudent(nisn: string, birthDate: string) {
+		return runWithSessionRefresh(() =>
+			$fetch<{ success: boolean; user: AppUser }>('/api/auth/student-login', {
+				method: 'POST',
+				body: { nisn, birthDate }
+			})
+		)
 	}
 
-	async function registerStudent(payload: {
+	function registerStudent(payload: {
 		nisn: string
 		name: string
 		birthDate: string
 		grade: number
 		schoolName: string
 	}) {
-		const res = await $fetch<{ success: boolean; user: AppUser; message: string }>('/api/auth/student-register', {
-			method: 'POST',
-			body: payload
-		})
-
-		if (res.success && res.user) {
-			currentUser.value = res.user
-		}
-		return res
+		return runWithSessionRefresh(() =>
+			$fetch<{ success: boolean; user: AppUser; message: string }>('/api/auth/student-register', {
+				method: 'POST',
+				body: payload
+			})
+		)
 	}
 
-	async function loginTeacher(email: string, pin: string) {
-		const res = await $fetch<{ success: boolean; user: AppUser }>('/api/auth/teacher-login', {
-			method: 'POST',
-			body: { email, password: pin }
-		})
-
-		if (res.success && res.user) {
-			currentUser.value = res.user
-		}
-		return res
+	function loginTeacher(email: string, pin: string) {
+		return runWithSessionRefresh(() =>
+			$fetch<{ success: boolean; user: AppUser }>('/api/auth/teacher-login', {
+				method: 'POST',
+				body: { email, password: pin }
+			})
+		)
 	}
 
 	function logout() {
-		currentUser.value = null
+		return signOut()
 	}
 
-	function updateStudentStats(xpEarned: number, starsEarned: number) {
-		if (currentUser.value && currentUser.value.role === 'student') {
-			currentUser.value.totalXp = (currentUser.value.totalXp || 0) + xpEarned
-			currentUser.value.totalStars = (currentUser.value.totalStars || 0) + starsEarned
-		}
+	// XP dan bintang sudah dihitung di server; cukup ambil ulang sesinya
+	function refreshStats() {
+		return fetchSession({ force: true })
 	}
 
-	async function updateProfile(payload: {
+	function updateProfile(payload: {
 		name?: string
 		schoolName?: string
 		grade?: number
 		password?: string
 	}) {
-		if (!currentUser.value?.id) return
-		const res = await $fetch<{ success: boolean; user: AppUser }>('/api/user/profile', {
-			method: 'PUT',
-			body: {
-				userId: currentUser.value.id,
-				...payload
-			}
-		})
-		if (res.success && res.user) {
-			currentUser.value = {
-				...currentUser.value,
-				...res.user
-			}
-		}
-		return res
+		return runWithSessionRefresh(() =>
+			$fetch<{ success: boolean; user: AppUser }>('/api/user/profile', {
+				method: 'PUT',
+				body: payload
+			})
+		)
 	}
 
 	return {
@@ -118,7 +93,7 @@ export const useAuthStore = defineStore('auth', () => {
 		registerStudent,
 		loginTeacher,
 		logout,
-		updateStudentStats,
+		refreshStats,
 		updateProfile
 	}
 })

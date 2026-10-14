@@ -97,10 +97,11 @@ async function handleSave() {
 				<form class="space-y-4" @submit.prevent="handleSave">
 					<!-- Nama Lengkap -->
 					<div class="space-y-1.5">
-						<label class="text-xs font-bold text-neutral-700 dark:text-neutral-300">
+						<label for="profilemodal-name" class="text-xs font-bold text-neutral-700 dark:text-neutral-300">
 							Nama Lengkap
 						</label>
 						<UInput
+							id="profilemodal-name"
 							v-model="name"
 							placeholder="Masukkan nama lengkap..."
 							icon="i-lucide-user"
@@ -111,10 +112,11 @@ async function handleSave() {
 
 					<!-- Asal Sekolah -->
 					<div class="space-y-1.5">
-						<label class="text-xs font-bold text-neutral-700 dark:text-neutral-300">
+						<label for="profilemodal-schoolname" class="text-xs font-bold text-neutral-700 dark:text-neutral-300">
 							Nama Sekolah
 						</label>
 						<UInput
+							id="profilemodal-schoolname"
 							v-model="schoolName"
 							placeholder="Contoh: SDN 01 Nusantara"
 							icon="i-lucide-school"
@@ -124,29 +126,25 @@ async function handleSave() {
 
 					<!-- Tingkat Kelas (Hanya untuk Siswa) -->
 					<div v-if="auth.isStudent" class="space-y-1.5">
-						<label class="text-xs font-bold text-neutral-700 dark:text-neutral-300">
+						<label for="profilemodal-grade" class="text-xs font-bold text-neutral-700 dark:text-neutral-300">
 							Tingkat Kelas SD
 						</label>
-						<select
+						<USelect
+							id="profilemodal-grade"
 							v-model="grade"
-							class="w-full text-xs rounded-lg border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-900 px-3 py-2 font-bold outline-none"
-						>
-							<option :value="1">Kelas 1 SD</option>
-							<option :value="2">Kelas 2 SD</option>
-							<option :value="3">Kelas 3 SD</option>
-							<option :value="4">Kelas 4 SD</option>
-							<option :value="5">Kelas 5 SD</option>
-							<option :value="6">Kelas 6 SD</option>
-						</select>
+							:items="GRADE_OPTIONS"
+							class="w-full"
+						/>
 					</div>
 
 					<!-- Ubah Kata Sandi / PIN Baru (Opsional) -->
 					<div class="space-y-1.5 pt-2 border-t border-neutral-100 dark:border-neutral-800">
-						<label class="text-xs font-bold text-neutral-700 dark:text-neutral-300 flex items-center justify-between">
+						<label for="profilemodal-newpassword" class="text-xs font-bold text-neutral-700 dark:text-neutral-300 flex items-center justify-between">
 							<span>Ubah Kata Sandi / PIN</span>
-							<span class="text-[10px] text-neutral-400 font-normal">Kosongkan jika tidak ingin diubah</span>
+							<span class="text-[10px] text-muted font-normal">Kosongkan jika tidak ingin diubah</span>
 						</label>
 						<UInput
+							id="profilemodal-newpassword"
 							v-model="newPassword"
 							type="password"
 							placeholder="Masukkan kata sandi baru..."

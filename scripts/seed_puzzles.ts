@@ -81,7 +81,8 @@ const puzzlesToSeed: PuzzleDef[] = [
 			{ clue: 'Sikap tidak berbohong dan berkata apa adanya', answer: 'JUJUR' },
 			{ clue: 'Hidup damai tanpa pertengkaran saling menyayangi', answer: 'RUKUN' },
 			{ clue: 'Berbicara dan bertindak dengan santun kepada yang lebih tua', answer: 'SOPAN' },
-			{ clue: 'Rekan bermain dan belajar bersama di kelas', answer: 'TEMAN' }
+			{ clue: 'Rekan bermain dan belajar bersama di kelas', answer: 'TEMAN' },
+			{ clue: 'Ucapan yang kita sampaikan saat bertemu guru atau teman', answer: 'SALAM' }
 		]
 	},
 
@@ -228,6 +229,9 @@ async function run() {
 	for (const p of puzzlesToSeed) {
 		console.log(`Generating layout for: [Kelas ${p.grade}] ${p.title}...`)
 		const layout = generateCrossword(p.words)
+		if (layout.unplaced.length > 0) {
+			console.warn(`  ⚠ ${layout.unplaced.length} kata tidak muat di grid: ${layout.unplaced.map(w => w.answer).join(', ')}`)
+		}
 
 		await client.execute({
 			sql: `INSERT OR REPLACE INTO puzzles (id, title, description, grade, subject, order_index, icon, created_at, updated_at)

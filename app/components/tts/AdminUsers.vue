@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed } from 'vue'
 import { useAuthStore } from '~/stores/authStore'
 
 const auth = useAuthStore()
@@ -12,6 +12,13 @@ const { data, status, refresh: fetchUsers } = await useFetch<{ teachers: any[]; 
 const teachers = computed(() => data.value?.teachers || [])
 const students = computed(() => data.value?.students || [])
 const isLoading = computed(() => status.value === 'pending')
+
+const matches = (...fields: (string | null | undefined)[]) => {
+	const q = search.value.trim().toLowerCase()
+	return !q || fields.some(f => (f ?? '').toLowerCase().includes(q))
+}
+const filteredTeachers = computed(() => teachers.value.filter(t => matches(t.name, t.schoolName, t.email)))
+const filteredStudents = computed(() => students.value.filter(s => matches(s.name, s.schoolName, s.nisn)))
 
 // Edit Modal State
 const isEditModalOpen = ref(false)
@@ -87,7 +94,7 @@ async function handleSaveUser() {
 				email: editingUser.value.isStudent ? undefined : editingUser.value.email.trim(),
 				schoolName: editingUser.value.schoolName.trim(),
 				grade: editingUser.value.isStudent ? Number(editingUser.value.grade) : undefined,
-				nisn: editingUser.value.isStudent ? editingUser.value.nisn.trim() : undefined,
+				nisn: editingUser.value.isStudent ? (editingUser.value.nisn ?? '').trim() : undefined,
 				totalXp: editingUser.value.isStudent ? Number(editingUser.value.totalXp) : undefined,
 				totalStars: editingUser.value.isStudent ? Number(editingUser.value.totalStars) : undefined,
 				password: editingUser.value.password?.trim() ? editingUser.value.password.trim() : undefined
@@ -108,27 +115,43 @@ async function handleSaveUser() {
 	}
 }
 
-async function handleDelete(id: string, name: string) {
-	if (!confirm(`Apakah Anda yakin ingin menghapus pengguna "${name}"?`)) {
-		return
+// Konfirmasi hapus memakai UModal, bukan confirm() bawaan peramban
+const pendingDelete = ref<{ id: string; name: string } | null>(null)
+const isDeleting = ref(false)
+const isDeleteModalOpen = computed({
+	get: () => pendingDelete.value !== null,
+	set: (open: boolean) => {
+		if (!open) pendingDelete.value = null
 	}
+})
 
+function handleDelete(id: string, name: string) {
+	pendingDelete.value = { id, name }
+}
+
+async function confirmDelete() {
+	if (!pendingDelete.value) return
+	const { id, name } = pendingDelete.value
+	isDeleting.value = true
 	try {
 		await $fetch(`/api/admin/users/${id}`, { method: 'DELETE' })
 		toast.add({
-			title: 'Pengguna Dihapus',
-			description: `Akun "${name}" telah dihapus.`,
+			title: 'Pengguna dihapus',
+			description: `Akun "${name}" sudah dihapus.`,
 			color: 'neutral'
 		})
+		pendingDelete.value = null
 		await fetchUsers()
 	} catch (err: any) {
-		alert(err.data?.statusMessage || 'Gagal menghapus pengguna.')
+		toast.add({
+			title: 'Gagal menghapus pengguna',
+			description: err.data?.statusMessage || 'Coba lagi beberapa saat lagi.',
+			color: 'error'
+		})
+	} finally {
+		isDeleting.value = false
 	}
 }
-
-onMounted(() => {
-	fetchUsers()
-})
 </script>
 
 <template>
@@ -142,10 +165,10 @@ onMounted(() => {
 				<div>
 					<div class="flex items-center gap-2">
 						<h2 class="font-extrabold text-lg sm:text-xl">Manajemen Pengguna Super Admin</h2>
-						<UBadge color="primary" variant="subtle" size="sm">Pusat Kendali</UBadge>
+						<UBadge color="primary" variant="solid" size="sm">Pusat Kendali</UBadge>
 					</div>
 					<p class="text-xs text-neutral-400 mt-0.5">
-						Login sebagai: <strong class="text-amber-400">{{ auth.currentUser?.email }}</strong> (Dinar Permadi)
+						Masuk sebagai <strong class="text-amber-400">{{ auth.currentUser?.name }}</strong> ({{ auth.currentUser?.email }})
 					</p>
 				</div>
 			</div>
@@ -157,7 +180,7 @@ onMounted(() => {
 					color="neutral"
 					icon="i-lucide-refresh-cw"
 					:loading="isLoading"
-					@click="fetchUsers"
+					@click="fetchUsers()"
 				>
 					Segarkan Data
 				</UButton>
@@ -168,11 +191,13 @@ onMounted(() => {
 		<UCard :ui="{ body: 'p-4 sm:p-6' }">
 			<!-- Tab Switchers & Search -->
 			<div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
-				<div class="flex items-center gap-2 p-1 bg-neutral-100 dark:bg-neutral-800 rounded-xl">
+				<div role="tablist" aria-label="Jenis pengguna" class="flex items-center gap-2 p-1 bg-neutral-100 dark:bg-neutral-800 rounded-xl">
 					<button
 						type="button"
+						role="tab"
+						:aria-selected="activeTab === 'teachers'"
 						class="px-4 py-2 text-xs font-bold rounded-lg transition-all flex items-center gap-2 cursor-pointer"
-						:class="activeTab === 'teachers' ? 'bg-white dark:bg-neutral-700 shadow-sm text-primary dark:text-primary-400' : 'text-neutral-500 hover:text-neutral-900'"
+						:class="activeTab === 'teachers' ? 'bg-white dark:bg-neutral-700 shadow-sm text-primary dark:text-primary-400' : 'text-toned hover:text-highlighted'"
 						@click="activeTab = 'teachers'"
 					>
 						<UIcon name="i-lucide-graduation-cap" class="w-4 h-4" />
@@ -180,8 +205,10 @@ onMounted(() => {
 					</button>
 					<button
 						type="button"
+						role="tab"
+						:aria-selected="activeTab === 'students'"
 						class="px-4 py-2 text-xs font-bold rounded-lg transition-all flex items-center gap-2 cursor-pointer"
-						:class="activeTab === 'students' ? 'bg-white dark:bg-neutral-700 shadow-sm text-primary dark:text-primary-400' : 'text-neutral-500 hover:text-neutral-900'"
+						:class="activeTab === 'students' ? 'bg-white dark:bg-neutral-700 shadow-sm text-primary dark:text-primary-400' : 'text-toned hover:text-highlighted'"
 						@click="activeTab = 'students'"
 					>
 						<UIcon name="i-lucide-users" class="w-4 h-4" />
@@ -200,21 +227,35 @@ onMounted(() => {
 				</div>
 			</div>
 
+			<UAlert
+				v-if="status === 'error'"
+				color="error"
+				variant="subtle"
+				icon="i-lucide-circle-alert"
+				title="Data pengguna gagal dimuat"
+				description="Periksa koneksi, lalu tekan Segarkan Data."
+				class="mb-4"
+			/>
+
 			<!-- TAB 1: DAFTAR GURU -->
 			<div v-if="activeTab === 'teachers'" class="space-y-4">
-				<div v-if="isLoading" class="p-8 text-center text-neutral-400">
+				<div v-if="isLoading" class="p-8 text-center text-muted">
 					<UIcon name="i-lucide-loader-2" class="w-6 h-6 animate-spin mx-auto text-primary mb-2" />
 					<p class="text-xs">Memuat data guru...</p>
 				</div>
 
-				<div v-else-if="teachers.length === 0" class="p-8 text-center text-neutral-400 text-sm">
+				<div v-else-if="teachers.length === 0" class="p-8 text-center text-muted text-sm">
 					Belum ada guru yang terdaftar.
+				</div>
+
+				<div v-else-if="filteredTeachers.length === 0" class="p-8 text-center text-muted text-sm">
+					Tidak ada guru yang cocok dengan "{{ search }}".
 				</div>
 
 				<div v-else class="overflow-x-auto">
 					<table class="w-full text-left text-xs border-collapse">
 						<thead>
-							<tr class="border-b border-neutral-200 dark:border-neutral-800 text-neutral-500 uppercase tracking-wider">
+							<tr class="border-b border-neutral-200 dark:border-neutral-800 text-muted uppercase tracking-wider">
 								<th class="py-3 px-3 font-bold">Nama Guru</th>
 								<th class="py-3 px-3 font-bold">Email</th>
 								<th class="py-3 px-3 font-bold">Asal Sekolah</th>
@@ -223,13 +264,13 @@ onMounted(() => {
 						</thead>
 						<tbody class="divide-y divide-neutral-100 dark:divide-neutral-800">
 							<tr
-								v-for="t in teachers.filter(item => !search || item.name.toLowerCase().includes(search.toLowerCase()) || item.schoolName.toLowerCase().includes(search.toLowerCase()) || item.email.toLowerCase().includes(search.toLowerCase()))"
+								v-for="t in filteredTeachers"
 								:key="t.id"
 								class="hover:bg-neutral-50 dark:hover:bg-neutral-800/50"
 							>
 								<td class="py-3 px-3 font-bold text-neutral-900 dark:text-neutral-100">
 									<div class="flex items-center gap-2">
-										<div class="w-7 h-7 rounded-full bg-sky-100 dark:bg-sky-900/50 text-sky-600 flex items-center justify-center font-bold">
+										<div class="w-7 h-7 rounded-full bg-sky-100 dark:bg-sky-900/50 text-sky-800 dark:text-sky-200 flex items-center justify-center font-bold">
 											{{ t.name.charAt(0) }}
 										</div>
 										<div>
@@ -257,7 +298,7 @@ onMounted(() => {
 											Edit
 										</UButton>
 										<UButton
-											v-if="t.email !== 'dinarpermadi07@gmail.com'"
+											v-if="t.role !== 'admin'"
 											size="xs"
 											color="error"
 											variant="ghost"
@@ -277,19 +318,23 @@ onMounted(() => {
 
 			<!-- TAB 2: DAFTAR SISWA -->
 			<div v-else class="space-y-4">
-				<div v-if="isLoading" class="p-8 text-center text-neutral-400">
+				<div v-if="isLoading" class="p-8 text-center text-muted">
 					<UIcon name="i-lucide-loader-2" class="w-6 h-6 animate-spin mx-auto text-primary mb-2" />
 					<p class="text-xs">Memuat data siswa...</p>
 				</div>
 
-				<div v-else-if="students.length === 0" class="p-8 text-center text-neutral-400 text-sm">
+				<div v-else-if="students.length === 0" class="p-8 text-center text-muted text-sm">
 					Belum ada siswa yang mendaftar.
+				</div>
+
+				<div v-else-if="filteredStudents.length === 0" class="p-8 text-center text-muted text-sm">
+					Tidak ada siswa yang cocok dengan "{{ search }}".
 				</div>
 
 				<div v-else class="overflow-x-auto">
 					<table class="w-full text-left text-xs border-collapse">
 						<thead>
-							<tr class="border-b border-neutral-200 dark:border-neutral-800 text-neutral-500 uppercase tracking-wider">
+							<tr class="border-b border-neutral-200 dark:border-neutral-800 text-muted uppercase tracking-wider">
 								<th class="py-3 px-3 font-bold">NISN & Nama Siswa</th>
 								<th class="py-3 px-3 font-bold">Kelas</th>
 								<th class="py-3 px-3 font-bold">Asal Sekolah</th>
@@ -300,18 +345,18 @@ onMounted(() => {
 						</thead>
 						<tbody class="divide-y divide-neutral-100 dark:divide-neutral-800">
 							<tr
-								v-for="s in students.filter(item => !search || item.name.toLowerCase().includes(search.toLowerCase()) || item.schoolName.toLowerCase().includes(search.toLowerCase()) || (item.nisn && item.nisn.includes(search)))"
+								v-for="s in filteredStudents"
 								:key="s.id"
 								class="hover:bg-neutral-50 dark:hover:bg-neutral-800/50"
 							>
 								<td class="py-3 px-3 font-bold text-neutral-900 dark:text-neutral-100">
 									<div class="flex items-center gap-2">
-										<div class="w-7 h-7 rounded-full bg-emerald-100 dark:bg-emerald-900/50 text-emerald-600 flex items-center justify-center font-bold">
+										<div class="w-7 h-7 rounded-full bg-emerald-100 dark:bg-emerald-900/50 text-emerald-800 dark:text-emerald-200 flex items-center justify-center font-bold">
 											{{ s.name.charAt(0) }}
 										</div>
 										<div>
 											<p class="leading-tight">{{ s.name }}</p>
-											<p class="text-[10px] text-neutral-500 font-mono font-normal">NISN: {{ s.nisn || '-' }}</p>
+											<p class="text-[10px] text-muted font-mono font-normal">NISN: {{ s.nisn || '-' }}</p>
 										</div>
 									</div>
 								</td>
@@ -323,7 +368,7 @@ onMounted(() => {
 								<td class="py-3 px-3 text-neutral-700 dark:text-neutral-300">
 									{{ s.schoolName || '-' }}
 								</td>
-								<td class="py-3 px-3 font-extrabold text-amber-600 dark:text-amber-400">
+								<td class="py-3 px-3 font-extrabold text-amber-700 dark:text-amber-400">
 									⚡ {{ s.totalXp || 0 }} XP
 								</td>
 								<td class="py-3 px-3 font-extrabold text-amber-500">
@@ -392,10 +437,11 @@ onMounted(() => {
 					<form class="space-y-4" @submit.prevent="handleSaveUser">
 						<!-- Nama Lengkap -->
 						<div class="space-y-1.5">
-							<label class="text-xs font-bold text-neutral-700 dark:text-neutral-300">
+							<label for="adminusers-editinguser-name" class="text-xs font-bold text-neutral-700 dark:text-neutral-300">
 								Nama Lengkap
 							</label>
 							<UInput
+								id="adminusers-editinguser-name"
 								v-model="editingUser.name"
 								placeholder="Nama pengguna..."
 								class="w-full font-bold"
@@ -405,10 +451,11 @@ onMounted(() => {
 
 						<!-- Jika Guru: Email -->
 						<div v-if="!editingUser.isStudent" class="space-y-1.5">
-							<label class="text-xs font-bold text-neutral-700 dark:text-neutral-300">
+							<label for="adminusers-editinguser-email" class="text-xs font-bold text-neutral-700 dark:text-neutral-300">
 								Alamat Email
 							</label>
 							<UInput
+								id="adminusers-editinguser-email"
 								v-model="editingUser.email"
 								type="email"
 								placeholder="nama@sekolah.sch.id"
@@ -420,10 +467,11 @@ onMounted(() => {
 						<!-- Jika Siswa: NISN & Kelas -->
 						<div v-if="editingUser.isStudent" class="grid grid-cols-2 gap-3">
 							<div class="space-y-1.5">
-								<label class="text-xs font-bold text-neutral-700 dark:text-neutral-300">
+								<label for="adminusers-editinguser-nisn" class="text-xs font-bold text-neutral-700 dark:text-neutral-300">
 									NISN Siswa
 								</label>
 								<UInput
+									id="adminusers-editinguser-nisn"
 									v-model="editingUser.nisn"
 									placeholder="10 digit NISN..."
 									class="w-full font-mono font-bold"
@@ -431,29 +479,25 @@ onMounted(() => {
 							</div>
 
 							<div class="space-y-1.5">
-								<label class="text-xs font-bold text-neutral-700 dark:text-neutral-300">
+								<label for="adminusers-editinguser-grade" class="text-xs font-bold text-neutral-700 dark:text-neutral-300">
 									Tingkat Kelas
 								</label>
-								<select
+								<USelect
+									id="adminusers-editinguser-grade"
 									v-model="editingUser.grade"
-									class="w-full text-xs rounded-lg border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-900 px-3 py-2 font-bold outline-none"
-								>
-									<option :value="1">Kelas 1 SD</option>
-									<option :value="2">Kelas 2 SD</option>
-									<option :value="3">Kelas 3 SD</option>
-									<option :value="4">Kelas 4 SD</option>
-									<option :value="5">Kelas 5 SD</option>
-									<option :value="6">Kelas 6 SD</option>
-								</select>
+									:items="GRADE_OPTIONS"
+									class="w-full"
+								/>
 							</div>
 						</div>
 
 						<!-- Asal Sekolah -->
 						<div class="space-y-1.5">
-							<label class="text-xs font-bold text-neutral-700 dark:text-neutral-300">
+							<label for="adminusers-editinguser-schoolname" class="text-xs font-bold text-neutral-700 dark:text-neutral-300">
 								Asal Sekolah
 							</label>
 							<UInput
+								id="adminusers-editinguser-schoolname"
 								v-model="editingUser.schoolName"
 								placeholder="Contoh: SDN 01 Nusantara"
 								class="w-full"
@@ -463,20 +507,22 @@ onMounted(() => {
 						<!-- Jika Siswa: Edit XP & Stars -->
 						<div v-if="editingUser.isStudent" class="grid grid-cols-2 gap-3 p-3 rounded-xl bg-neutral-50 dark:bg-neutral-800/60 border border-neutral-200 dark:border-neutral-700">
 							<div class="space-y-1.5">
-								<label class="text-xs font-bold text-neutral-700 dark:text-neutral-300">
+								<label for="adminusers-editinguser-totalxp" class="text-xs font-bold text-neutral-700 dark:text-neutral-300">
 									Total XP
 								</label>
 								<UInput
+									id="adminusers-editinguser-totalxp"
 									v-model="editingUser.totalXp"
 									type="number"
 									class="w-full font-bold"
 								/>
 							</div>
 							<div class="space-y-1.5">
-								<label class="text-xs font-bold text-neutral-700 dark:text-neutral-300">
+								<label for="adminusers-editinguser-totalstars" class="text-xs font-bold text-neutral-700 dark:text-neutral-300">
 									Total Bintang
 								</label>
 								<UInput
+									id="adminusers-editinguser-totalstars"
 									v-model="editingUser.totalStars"
 									type="number"
 									class="w-full font-bold"
@@ -486,11 +532,12 @@ onMounted(() => {
 
 						<!-- Reset Kata Sandi / PIN (Opsional) -->
 						<div class="space-y-1.5 pt-2 border-t border-neutral-100 dark:border-neutral-800">
-							<label class="text-xs font-bold text-neutral-700 dark:text-neutral-300 flex items-center justify-between">
+							<label for="adminusers-editinguser-password" class="text-xs font-bold text-neutral-700 dark:text-neutral-300 flex items-center justify-between">
 								<span>Ganti Kata Sandi / PIN Akun</span>
-								<span class="text-[10px] text-neutral-400 font-normal">Kosongkan bila tidak diganti</span>
+								<span class="text-[10px] text-muted font-normal">Kosongkan bila tidak diganti</span>
 							</label>
 							<UInput
+								id="adminusers-editinguser-password"
 								v-model="editingUser.password"
 								type="password"
 								placeholder="Ketik kata sandi baru untuk user ini..."
@@ -518,6 +565,23 @@ onMounted(() => {
 							</UButton>
 						</div>
 					</form>
+				</div>
+			</template>
+		</UModal>
+
+		<UModal
+			v-model:open="isDeleteModalOpen"
+			title="Hapus pengguna?"
+			:description="`Akun &quot;${pendingDelete?.name}&quot; beserta progres belajarnya akan dihapus permanen.`"
+		>
+			<template #footer>
+				<div class="flex w-full justify-end gap-2">
+					<UButton color="neutral" variant="outline" @click="isDeleteModalOpen = false">
+						Batal
+					</UButton>
+					<UButton color="error" icon="i-lucide-trash-2" :loading="isDeleting" @click="confirmDelete">
+						Hapus akun
+					</UButton>
 				</div>
 			</template>
 		</UModal>

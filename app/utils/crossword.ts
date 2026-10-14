@@ -42,6 +42,8 @@ export interface BuiltLayout {
 
 export const cellKey = (r: number, c: number) => `${r},${c}`
 
+const parseKey = (k: string) => k.split(',').map(Number) as [number, number]
+
 export function placeLetter(
 	grid: Map<string, string>,
 	letter: string,
@@ -121,17 +123,18 @@ export function assignNumbers(
 	placed: PlacedWord[]
 ) {
 	const height = grid.length
-	const width = height > 0 ? grid[0].length : 0
+	const width = grid[0]?.length ?? 0
+	const at = (r: number, c: number) => grid[r]?.[c]
 	const numberMap = new Map<string, number>()
 	let num = 0
 
 	for (let r = 0; r < height; r++) {
 		for (let c = 0; c < width; c++) {
-			if (!grid[r][c]) continue
+			if (!at(r, c)) continue
 			const startsAcross =
-				(c === 0 || !grid[r][c - 1]) && c + 1 < width && !!grid[r][c + 1]
+				(c === 0 || !at(r, c - 1)) && c + 1 < width && !!at(r, c + 1)
 			const startsDown =
-				(r === 0 || !grid[r - 1][c]) && r + 1 < height && !!grid[r + 1][c]
+				(r === 0 || !at(r - 1, c)) && r + 1 < height && !!at(r + 1, c)
 			if (startsAcross || startsDown) {
 				num++
 				numberMap.set(cellKey(r, c), num)
@@ -176,8 +179,9 @@ export function buildLayoutFromPlaced(placed: PlacedWord[]): BuiltLayout {
 		for (let k = 0; k < p.answer.length; k++) {
 			const r = p.direction === 'down' ? p.row + k : p.row
 			const c = p.direction === 'across' ? p.col + k : p.col
-			if (r >= 0 && r < height && c >= 0 && c < width) {
-				grid[r][c] = p.answer[k]
+			const row = grid[r]
+			if (row && c >= 0 && c < width) {
+				row[c] = p.answer[k] ?? null
 			}
 		}
 	}
@@ -192,6 +196,20 @@ export function buildLayoutFromPlaced(placed: PlacedWord[]): BuiltLayout {
 	}
 }
 
+// PRNG kecil dengan seed, supaya kata yang sama selalu menghasilkan grid yang sama
+function mulberry32(seed: number) {
+	return () => {
+		seed = (seed + 0x6d2b79f5) | 0
+		let t = Math.imul(seed ^ (seed >>> 15), 1 | seed)
+		t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t
+		return ((t ^ (t >>> 14)) >>> 0) / 4294967296
+	}
+}
+
+const SHUFFLE_ATTEMPTS = 60
+
+// Penyusunan greedy bisa membuang kata kalau urutannya kurang pas, jadi beberapa
+// urutan dicoba dan hasil terbaik dipakai: kata terbuang paling sedikit, lalu grid paling ringkas
 export function generateCrossword(entries: WordEntry[]): CrosswordResult {
 	const words = entries
 		.map(e => ({
@@ -204,14 +222,47 @@ export function generateCrossword(entries: WordEntry[]): CrosswordResult {
 		return { grid: [], placed: [], unplaced: [], width: 0, height: 0 }
 	}
 
-	const sorted = [...words].sort((a, b) => b.answer.length - a.answer.length)
+	const byLength = [...words].sort((a, b) => b.answer.length - a.answer.length)
+	const orders: WordEntry[][] = [byLength]
+	for (let i = 1; i < byLength.length; i++) {
+		orders.push([byLength[i]!, ...byLength.filter((_, k) => k !== i)])
+	}
+	const rand = mulberry32(words.length * 7919 + words.reduce((n, w) => n + w.answer.length, 0))
+	for (let a = 0; a < SHUFFLE_ATTEMPTS; a++) {
+		const shuffled = [...byLength]
+		for (let i = shuffled.length - 1; i > 0; i--) {
+			const j = Math.floor(rand() * (i + 1))
+			;[shuffled[i], shuffled[j]] = [shuffled[j]!, shuffled[i]!]
+		}
+		orders.push(shuffled)
+	}
+
+	let best: CrosswordResult | null = null
+	for (const order of orders) {
+		const result = layoutInOrder(order)
+		if (!best || isBetterLayout(result, best)) best = result
+		if (best.unplaced.length === 0 && orders.indexOf(order) >= byLength.length) break
+	}
+	return best!
+}
+
+function isBetterLayout(a: CrosswordResult, b: CrosswordResult) {
+	if (a.unplaced.length !== b.unplaced.length) return a.unplaced.length < b.unplaced.length
+	const sideA = Math.max(a.width, a.height)
+	const sideB = Math.max(b.width, b.height)
+	if (sideA !== sideB) return sideA < sideB
+	return a.width * a.height < b.width * b.height
+}
+
+function layoutInOrder(sorted: WordEntry[]): CrosswordResult {
 	const grid = new Map<string, string>()
 	const placed: PlacedWord[] = []
 
 	// Tempatkan kata pertama secara mendatar di (0, 0)
 	const first = sorted[0]
+	if (!first) return { grid: [], placed: [], unplaced: [], width: 0, height: 0 }
 	for (let k = 0; k < first.answer.length; k++) {
-		placeLetter(grid, first.answer[k], 0, k)
+		placeLetter(grid, first.answer[k]!, 0, k)
 	}
 	placed.push({
 		clue: first.clue,
@@ -266,7 +317,7 @@ export function generateCrossword(entries: WordEntry[]): CrosswordResult {
 				const dr = best.direction === 'down' ? 1 : 0
 				const dc = best.direction === 'across' ? 1 : 0
 				for (let k = 0; k < w.answer.length; k++) {
-					placeLetter(grid, w.answer[k], best.row + dr * k, best.col + dc * k)
+					placeLetter(grid, w.answer[k]!, best.row + dr * k, best.col + dc * k)
 				}
 				placed.push({
 					clue: w.clue,
@@ -298,7 +349,7 @@ export function generateCrossword(entries: WordEntry[]): CrosswordResult {
 	let maxC = -Infinity
 
 	for (const k of grid.keys()) {
-		const [r, c] = k.split(',').map(Number)
+		const [r, c] = parseKey(k)
 		if (r < minR) minR = r
 		if (c < minC) minC = c
 		if (r > maxR) maxR = r
@@ -317,8 +368,9 @@ export function generateCrossword(entries: WordEntry[]): CrosswordResult {
 	)
 
 	for (const [k, letter] of grid.entries()) {
-		const [r, c] = k.split(',').map(Number)
-		grid2d[r - minR][c - minC] = letter
+		const [r, c] = parseKey(k)
+		const row = grid2d[r - minR]
+		if (row) row[c - minC] = letter
 	}
 
 	assignNumbers(grid2d, placed)

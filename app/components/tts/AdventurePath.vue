@@ -9,6 +9,10 @@ const emit = defineEmits<{
 const auth = useAuthStore()
 
 const selectedGrade = ref<number>(auth.currentUser?.grade || 1)
+// Begitu siswa masuk (atau ganti akun), peta langsung pindah ke kelasnya
+watch(() => auth.currentUser?.grade, (grade) => {
+	if (grade) selectedGrade.value = grade
+})
 const selectedSubject = ref<string>('Semua')
 
 const gradeThemes: Record<number, { name: string; phase: string; icon: string }> = {
@@ -20,10 +24,10 @@ const gradeThemes: Record<number, { name: string; phase: string; icon: string }>
 	6: { name: 'Kelas 6 SD', phase: 'Fase C · Uji Kompetensi Juara', icon: 'i-lucide-award' }
 }
 
-const currentTheme = computed(() => gradeThemes[selectedGrade.value] || gradeThemes[1])
+const currentTheme = computed(() => gradeThemes[selectedGrade.value] ?? gradeThemes[1]!)
 
 // Fetch semua soal untuk kelas terpilih
-const { data: allGradePuzzles, status } = await useFetch<any[]>(() => {
+const { data: allGradePuzzles, status, refresh } = await useFetch<any[]>(() => {
 	return `/api/puzzles?grade=${selectedGrade.value}`
 }, {
 	watch: [selectedGrade]
@@ -55,12 +59,9 @@ const puzzles = computed(() => {
 })
 
 // Fetch progress siswa
-const { data: studentProgress } = await useFetch<any[]>(() => {
-	return auth.currentUser?.id
-		? `/api/progress/student?studentId=${auth.currentUser.id}`
-		: null
-}, {
-	watch: [() => auth.currentUser?.id]
+// Endpoint mengembalikan daftar kosong untuk tamu dan guru
+const { data: studentProgress } = await useFetch<any[]>('/api/progress/student', {
+	watch: [() => auth.currentUser?.id, () => auth.currentUser?.totalXp]
 })
 
 const completedPuzzleMap = computed(() => {
@@ -100,7 +101,7 @@ const completedPuzzleMap = computed(() => {
 					block
 					:color="selectedGrade === g ? 'primary' : 'neutral'"
 					:variant="selectedGrade === g ? 'solid' : 'subtle'"
-					:icon="gradeThemes[g].icon"
+					:icon="gradeThemes[g]?.icon"
 					class="flex-col h-16 font-black cursor-pointer rounded-xl"
 					@click="selectedGrade = g"
 				>
@@ -113,7 +114,7 @@ const completedPuzzleMap = computed(() => {
 				v-if="availableSubjects.length > 1"
 				class="pt-3 mt-4 border-t border-neutral-100 dark:border-neutral-800 flex items-center gap-2 overflow-x-auto pb-1"
 			>
-				<span class="text-xs font-bold text-neutral-500 shrink-0">Pelajaran:</span>
+				<span class="text-xs font-bold text-muted shrink-0">Pelajaran:</span>
 				<div class="flex items-center gap-1.5 flex-nowrap sm:flex-wrap">
 					<UButton
 						v-for="subj in availableSubjects"
@@ -131,10 +132,20 @@ const completedPuzzleMap = computed(() => {
 		</UCard>
 
 		<!-- Loading State (UIcon animate-spin) -->
-		<div v-if="status === 'pending'" class="p-16 text-center text-neutral-500">
+		<div v-if="status === 'pending'" class="p-16 text-center text-muted">
 			<UIcon name="i-lucide-loader-2" class="w-8 h-8 animate-spin mx-auto text-primary mb-3" />
 			<p class="text-sm font-bold">Memuat peta petualangan kata...</p>
 		</div>
+
+		<UAlert
+			v-else-if="status === 'error'"
+			color="error"
+			variant="subtle"
+			icon="i-lucide-circle-alert"
+			title="Peta belajar gagal dimuat"
+			description="Periksa koneksi internet, lalu coba lagi."
+			:actions="[{ label: 'Coba lagi', color: 'error', variant: 'outline', onClick: () => refresh() }]"
+		/>
 
 		<!-- Empty State (Menggunakan komponen resmi UEmpty Nuxt UI) -->
 		<UEmpty
@@ -174,8 +185,8 @@ const completedPuzzleMap = computed(() => {
 							class="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl flex flex-col items-center justify-center shrink-0 shadow-sm border-b-2 select-none"
 							:class="[
 								completedPuzzleMap[puzzle.id]
-									? 'bg-amber-500 border-amber-700 text-white'
-									: 'bg-primary border-primary-600 text-white shadow-primary/20'
+									? 'bg-amber-500 border-amber-700 text-inverted'
+									: 'bg-primary border-primary-600 text-inverted shadow-primary/20'
 							]"
 						>
 							<UIcon
@@ -208,12 +219,17 @@ const completedPuzzleMap = computed(() => {
 
 					<!-- Sisi Kanan: Bintang & Tombol Aksi -->
 					<div class="flex flex-col items-end gap-1.5 shrink-0 pl-1">
-						<div class="flex gap-0.5 bg-neutral-100 dark:bg-neutral-800 px-2 py-1 rounded-lg">
+						<div
+							class="flex gap-0.5 bg-neutral-100 dark:bg-neutral-800 px-2 py-1 rounded-lg"
+							role="img"
+							:aria-label="`${completedPuzzleMap[puzzle.id]?.stars ?? 0} dari 3 bintang`"
+						>
 							<span
 								v-for="star in 3"
 								:key="star"
+								aria-hidden="true"
 								class="text-xs sm:text-sm leading-none"
-								:class="completedPuzzleMap[puzzle.id]?.stars >= star ? 'text-amber-400' : 'text-neutral-300 dark:text-neutral-600'"
+								:class="(completedPuzzleMap[puzzle.id]?.stars ?? 0) >= star ? 'text-amber-400' : 'text-neutral-300 dark:text-neutral-600'"
 							>
 								★
 							</span>

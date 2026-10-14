@@ -15,6 +15,20 @@
       "when": 1790353345155,
       "tag": "0001_sticky_silvermane",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1791990955419,
+      "tag": "0002_open_mimic",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "6",
+      "when": 1791990982806,
+      "tag": "0003_material_sabretooth",
+      "breakpoints": true
     }
   ]
 }

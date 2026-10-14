@@ -1,6 +1,41 @@
 import { db } from 'hub:db'
 import { sql } from 'drizzle-orm'
 
+defineRouteMeta({
+	openAPI: {
+		tags: ['Progres'],
+		operationId: 'getLeaderboard',
+		summary: 'Papan peringkat (30 teratas)',
+		parameters: [
+			{
+				in: 'query',
+				name: 'grade',
+				description: 'Kelas 1 sampai 6; kosongkan untuk semua kelas',
+				schema: {
+					type: 'integer',
+					minimum: 1,
+					maximum: 6
+				}
+			}
+		],
+		responses: {
+			200: {
+				description: 'Peringkat berdasarkan XP lalu bintang',
+				content: {
+					'application/json': {
+						schema: {
+							type: 'array',
+							items: {
+								$ref: '#/components/schemas/LeaderboardEntry'
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+})
+
 export default defineEventHandler(async (event) => {
 	const query = getQuery(event)
 	const grade = query.grade ? Number(query.grade) : undefined

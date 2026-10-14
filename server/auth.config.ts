@@ -1,5 +1,5 @@
 import { defineServerAuth } from '@nuxtjs/better-auth/config'
-import { admin } from 'better-auth/plugins'
+import { admin, bearer } from 'better-auth/plugins'
 
 export default defineServerAuth({
 	emailAndPassword: {
@@ -42,6 +42,8 @@ export default defineServerAuth({
 		}
 	},
 	plugins: [
-		admin()
+		admin(),
+		// Aplikasi Flutter mengirim token sesi lewat header Authorization, bukan cookie
+		bearer()
 	]
 })

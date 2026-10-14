@@ -90,27 +90,30 @@ export const useCrosswordStore = defineStore('crossword', () => {
 		isTimerRunning.value = false
 	}
 
-	function checkAnswers() {
-		isChecked.value = true
+	// Dipakai diam-diam setiap kali huruf diketik: tidak menandai merah/hijau
+	const isComplete = computed(() => {
 		const { width, height, grid } = layout.value
 		let total = 0
-		let correct = 0
-
 		for (let r = 0; r < height; r++) {
 			for (let c = 0; c < width; c++) {
-				if (grid[r]?.[c]) {
-					total++
-					if (userInputs.value[r]?.[c]?.toUpperCase() === grid[r][c].toUpperCase()) {
-						correct++
-					}
-				}
+				const answer = grid[r]?.[c]
+				if (!answer) continue
+				total++
+				if (userInputs.value[r]?.[c]?.toUpperCase() !== answer.toUpperCase()) return false
 			}
 		}
+		return total > 0
+	})
 
-		if (correct === total && total > 0) {
-			isSolved.value = true
-			isTimerRunning.value = false
-		}
+	// Tombol "Cek": menampilkan tanda benar/salah di setiap kotak
+	function checkAnswers() {
+		isChecked.value = true
+		return isComplete.value
+	}
+
+	function markSolved() {
+		isSolved.value = true
+		isTimerRunning.value = false
 	}
 
 	return {
@@ -124,9 +127,11 @@ export const useCrosswordStore = defineStore('crossword', () => {
 		isTimerRunning,
 		layout,
 		meta,
+		isComplete,
 		initPuzzle,
 		resetInputs,
 		revealAll,
-		checkAnswers
+		checkAnswers,
+		markSolved
 	}
 })

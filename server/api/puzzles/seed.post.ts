@@ -1,7 +1,55 @@
 import { db, schema } from 'hub:db'
 import { generateCrossword } from '~~/app/utils/crossword'
 
-export default defineEventHandler(async () => {
+defineRouteMeta({
+	openAPI: {
+		tags: ['Admin'],
+		operationId: 'seedPuzzles',
+		summary: 'Isi teka-teki contoh',
+		security: [
+			{
+				bearerAuth: []
+			},
+			{
+				cookieAuth: []
+			}
+		],
+		description: 'Khusus admin. Tidak melakukan apa-apa kalau database sudah berisi teka-teki.',
+		responses: {
+			200: {
+				description: 'Hasil seed',
+				content: {
+					'application/json': {
+						schema: {
+							type: 'object',
+							properties: {
+								success: {
+									type: 'boolean'
+								},
+								message: {
+									type: 'string'
+								},
+								puzzleId: {
+									type: 'string'
+								}
+							}
+						}
+					}
+				}
+			},
+			401: {
+				$ref: '#/components/responses/Unauthorized'
+			},
+			403: {
+				$ref: '#/components/responses/Forbidden'
+			}
+		}
+	}
+})
+
+export default defineEventHandler(async (event) => {
+	await requireRole(event, ['admin'])
+
 	const existing = await db.select().from(schema.puzzles).limit(1)
 
 	if (existing.length > 0) {

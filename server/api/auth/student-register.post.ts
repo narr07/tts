@@ -1,5 +1,71 @@
 import { db } from 'hub:db'
 import { sql } from 'drizzle-orm'
+import { hashPassword } from 'better-auth/crypto'
+
+defineRouteMeta({
+	openAPI: {
+		tags: ['Akun'],
+		operationId: 'registerStudent',
+		summary: 'Daftar akun siswa baru',
+		description: 'Membuat akun siswa dan langsung masuk. Respons membawa `token` seperti login.',
+		requestBody: {
+			required: true,
+			content: {
+				'application/json': {
+					schema: {
+						type: 'object',
+						required: ['nisn', 'name', 'birthDate', 'grade', 'schoolName'],
+						properties: {
+							nisn: {
+								type: 'string'
+							},
+							name: {
+								type: 'string'
+							},
+							birthDate: {
+								type: 'string',
+								format: 'date'
+							},
+							grade: {
+								type: 'integer',
+								minimum: 1,
+								maximum: 6
+							},
+							schoolName: {
+								type: 'string'
+							}
+						}
+					}
+				}
+			}
+		},
+		responses: {
+			200: {
+				description: 'Akun dibuat dan sudah masuk',
+				content: {
+					'application/json': {
+						schema: {
+							$ref: '#/components/schemas/AuthResponse'
+						}
+					}
+				}
+			},
+			400: {
+				$ref: '#/components/responses/BadRequest'
+			},
+			409: {
+				description: 'NISN sudah terdaftar',
+				content: {
+					'application/json': {
+						schema: {
+							$ref: '#/components/schemas/Error'
+						}
+					}
+				}
+			}
+		}
+	}
+})
 
 export default defineEventHandler(async (event) => {
 	const body = await readBody(event)
@@ -18,7 +84,7 @@ export default defineEventHandler(async (event) => {
 	const numGrade = Number(grade)
 	const cleanSchool = String(schoolName).trim()
 
-	if (numGrade < 1 || numGrade > 6) {
+	if (!Number.isInteger(numGrade) || numGrade < 1 || numGrade > 6) {
 		throw createError({
 			statusCode: 400,
 			statusMessage: 'Tingkat kelas harus antara 1 sampai 6 (Sekolah Dasar).'
@@ -48,11 +114,15 @@ export default defineEventHandler(async (event) => {
 
 	await db.run(sql`
 		INSERT INTO "account" (id, accountId, providerId, userId, password, createdAt, updatedAt)
-		VALUES (${`acc_${newId}`}, ${email}, 'credential', ${newId}, ${cleanBirthDate}, ${now}, ${now})
+		VALUES (${`acc_${newId}`}, ${email}, 'credential', ${newId}, ${await hashPassword(cleanBirthDate)}, ${now}, ${now})
 	`)
+
+	const session = await startSession(event, newId)
 
 	return {
 		success: true,
+		token: session.token,
+		expiresAt: session.expiresAt,
 		message: 'Pendaftaran siswa berhasil! Selamat datang!',
 		user: {
 			id: newId,

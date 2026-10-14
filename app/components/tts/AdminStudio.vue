@@ -1,16 +1,12 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
-import { useAuthStore } from '~/stores/authStore'
 import {
 	type Direction,
 	type PlacedWord,
 	type WordEntry,
-	buildLayoutFromPlaced,
 	generateCrossword,
 	cellKey
 } from '~/utils/crossword'
-
-const auth = useAuthStore()
 
 interface StudioQuestion {
 	id: string
@@ -89,16 +85,16 @@ const questions = ref<StudioQuestion[]>([
 		clue: 'Gunung tertinggi di Jawa',
 		answer: 'SEMERU',
 		direction: 'down',
-		row: 1,
-		col: 5
+		row: 4,
+		col: 4
 	},
 	{
 		id: 'q_demo_3',
 		clue: 'Kain tradisional malam khas Jawa',
 		answer: 'BATIK',
-		direction: 'across',
-		row: 7,
-		col: 4
+		direction: 'down',
+		row: 2,
+		col: 7
 	}
 ])
 
@@ -126,11 +122,6 @@ const placedWords = computed<PlacedWord[]>(() => {
 		}))
 })
 
-// Current dynamic layout
-const dynamicLayout = computed(() => {
-	return buildLayoutFromPlaced(placedWords.value)
-})
-
 // Fast lookup for current placed letters
 const occupiedLetters = computed(() => {
 	const map = new Map<string, { letter: string; questionIds: string[] }>()
@@ -144,7 +135,7 @@ const occupiedLetters = computed(() => {
 			const r = q.row + dr * k
 			const c = q.col + dc * k
 			const key = cellKey(r, c)
-			const char = q.answer[k].toUpperCase()
+			const char = (q.answer[k] ?? '').toUpperCase()
 
 			const existing = map.get(key)
 			if (existing) {
@@ -183,7 +174,7 @@ const hoverPlacementStatus = computed(() => {
 
 		// Ignore collision with the word itself being re-placed
 		if (occupied && !occupied.questionIds.includes(q.id)) {
-			if (occupied.letter !== q.answer[k].toUpperCase()) {
+			if (occupied.letter !== (q.answer[k] ?? '').toUpperCase()) {
 				return {
 					valid: false,
 					reason: `Tabrakan huruf di (${r}, ${c}): '${occupied.letter}' vs '${q.answer[k]}'`
@@ -385,7 +376,6 @@ async function savePuzzle() {
 				description: puzzleDescription.value.trim(),
 				grade: Number(puzzleGrade.value),
 				subject: puzzleSubject.value,
-				teacherId: auth.currentUser?.id || null,
 				questions: questions.value.map((q) => ({
 					clue: q.clue,
 					answer: q.answer,
@@ -457,28 +447,19 @@ async function savePuzzle() {
 
 				<div class="grid grid-cols-2 gap-3">
 					<UFormField label="Tingkat Kelas SD">
-						<select
+						<USelect
 							v-model="puzzleGrade"
-							class="w-full text-xs rounded-lg border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-900 px-3 py-2 font-bold outline-none"
-						>
-							<option :value="1">Kelas 1 SD</option>
-							<option :value="2">Kelas 2 SD</option>
-							<option :value="3">Kelas 3 SD</option>
-							<option :value="4">Kelas 4 SD</option>
-							<option :value="5">Kelas 5 SD</option>
-							<option :value="6">Kelas 6 SD</option>
-						</select>
+							:items="GRADE_OPTIONS"
+							class="w-full"
+						/>
 					</UFormField>
 
 					<UFormField label="Mata Pelajaran">
-						<select
+						<USelect
 							v-model="puzzleSubject"
-							class="w-full text-xs rounded-lg border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-900 px-3 py-2 font-bold outline-none"
-						>
-							<option v-for="subj in officialSubjects" :key="subj" :value="subj">
-								{{ subj }}
-							</option>
-						</select>
+							:items="officialSubjects"
+							class="w-full"
+						/>
 					</UFormField>
 				</div>
 			</UCard>
@@ -534,7 +515,7 @@ async function savePuzzle() {
 
 				<UButton
 					block
-					color="emerald"
+					color="success"
 					icon="i-lucide-plus"
 					@click="addQuestion"
 				>
@@ -577,7 +558,7 @@ async function savePuzzle() {
 					>
 						<div class="flex items-center justify-between gap-2">
 							<div class="flex items-center gap-2">
-								<span class="font-bold font-mono text-neutral-400">{{ idx + 1 }}.</span>
+								<span class="font-bold font-mono text-muted">{{ idx + 1 }}.</span>
 								<span class="font-bold font-mono tracking-wider text-neutral-900 dark:text-neutral-100">
 									{{ q.answer }}
 								</span>
@@ -600,21 +581,26 @@ async function savePuzzle() {
 								>
 									{{ placingQuestionId === q.id ? 'Memilih...' : 'Pilih Kotak' }}
 								</UButton>
-								<UButton
-									v-if="q.row !== null"
-									size="xs"
-									color="neutral"
-									variant="ghost"
-									icon="i-lucide-rotate-ccw"
-									@click="unplaceWord(q)"
-								/>
-								<UButton
-									size="xs"
-									color="error"
-									variant="ghost"
-									icon="i-lucide-trash-2"
-									@click="removeQuestion(q.id)"
-								/>
+								<UTooltip v-if="q.row !== null" text="Lepas dari grid">
+									<UButton
+										size="xs"
+										color="neutral"
+										variant="ghost"
+										icon="i-lucide-rotate-ccw"
+										:aria-label="`Lepas ${q.answer} dari grid`"
+										@click="unplaceWord(q)"
+									/>
+								</UTooltip>
+								<UTooltip text="Hapus soal">
+									<UButton
+										size="xs"
+										color="error"
+										variant="ghost"
+										icon="i-lucide-trash-2"
+										:aria-label="`Hapus soal ${q.answer}`"
+										@click="removeQuestion(q.id)"
+									/>
+								</UTooltip>
 							</div>
 						</div>
 
@@ -635,7 +621,7 @@ async function savePuzzle() {
 							<UIcon name="i-lucide-grid" class="w-5 h-5 text-amber-500" />
 							<div>
 								<h2 class="font-bold text-base sm:text-lg leading-tight">Live Interactive Grid Canvas</h2>
-								<p class="text-xs text-neutral-500">
+								<p class="text-xs text-muted">
 									Klik kotak mana saja untuk meletakkan kata secara visual
 								</p>
 							</div>
@@ -736,7 +722,7 @@ async function savePuzzle() {
 												: 'bg-rose-600 text-white font-black ring-4 ring-rose-400 z-20 scale-105 shadow-xl'
 											: occupiedLetters.has(cellKey(r-1, c-1))
 												? 'bg-white text-black font-black shadow-md border border-neutral-300 hover:ring-2 hover:ring-amber-400'
-												: 'bg-neutral-900 hover:bg-neutral-800 text-neutral-600 border border-neutral-800/80'
+												: 'bg-neutral-900 hover:bg-neutral-800 text-neutral-400 border border-neutral-800/80'
 									]"
 									@mouseenter="hoveredCell = { row: r-1, col: c-1 }"
 									@click="handleGridCellClick(r-1, c-1)"
@@ -752,7 +738,7 @@ async function savePuzzle() {
 									</span>
 
 									<!-- Titik koordinat samar di sel kosong -->
-									<span v-else class="text-[8px] opacity-40 font-mono">
+									<span v-else class="text-[8px] text-neutral-400 font-mono">
 										{{ r-1 }},{{ c-1 }}
 									</span>
 								</div>
@@ -761,7 +747,7 @@ async function savePuzzle() {
 					</div>
 				</div>
 
-				<div class="mt-4 flex items-center justify-between text-xs text-neutral-500 px-2">
+				<div class="mt-4 flex items-center justify-between text-xs text-muted px-2">
 					<div class="flex items-center gap-4">
 						<span class="flex items-center gap-1.5">
 							<span class="w-3 h-3 rounded bg-white dark:bg-neutral-900 border border-neutral-400 inline-block" />

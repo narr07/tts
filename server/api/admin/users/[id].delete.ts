@@ -1,7 +1,46 @@
 import { db } from 'hub:db'
 import { sql } from 'drizzle-orm'
 
+defineRouteMeta({
+	openAPI: {
+		tags: ['Admin'],
+		operationId: 'deleteUser',
+		summary: 'Hapus pengguna',
+		security: [
+			{
+				bearerAuth: []
+			},
+			{
+				cookieAuth: []
+			}
+		],
+		description: 'Khusus admin. Ikut menghapus sesi dan progres pengguna itu. Akun admin tidak bisa dihapus.',
+		responses: {
+			200: {
+				description: 'Terhapus',
+				content: {
+					'application/json': {
+						schema: {
+							$ref: '#/components/schemas/Success'
+						}
+					}
+				}
+			},
+			401: {
+				$ref: '#/components/responses/Unauthorized'
+			},
+			403: {
+				$ref: '#/components/responses/Forbidden'
+			},
+			404: {
+				$ref: '#/components/responses/NotFound'
+			}
+		}
+	}
+})
+
 export default defineEventHandler(async (event) => {
+	await requireRole(event, ['admin'])
 	const id = getRouterParam(event, 'id')
 
 	if (!id) {
@@ -11,7 +50,6 @@ export default defineEventHandler(async (event) => {
 		})
 	}
 
-	// Jangan izinkan menghapus super admin utama
 	const target = await db.all(sql`
 		SELECT email, role FROM "user" WHERE id = ${id} LIMIT 1
 	`)
@@ -24,10 +62,10 @@ export default defineEventHandler(async (event) => {
 	}
 
 	const user = target[0] as any
-	if (user.email === 'dinarpermadi07@gmail.com' || user.role === 'admin') {
+	if (user.role === 'admin') {
 		throw createError({
 			statusCode: 403,
-			statusMessage: 'Akun Super Admin utama tidak dapat dihapus!'
+			statusMessage: 'Akun admin tidak dapat dihapus.'
 		})
 	}
 

@@ -2,7 +2,7 @@
 import { ref } from 'vue'
 import { useAuthStore } from '~/stores/authStore'
 
-const props = defineProps<{
+defineProps<{
 	open: boolean
 }>()
 
@@ -14,7 +14,6 @@ const auth = useAuthStore()
 
 const activeTab = ref<'student_login' | 'student_register' | 'teacher_login'>('student_login')
 const errorMessage = ref('')
-const successMessage = ref('')
 const isLoading = ref(false)
 
 // Student Login Form
@@ -89,10 +88,8 @@ async function handleTeacherLogin() {
 	}
 }
 
-function fillAdminSample() {
-	teacherEmail.value = 'dinarpermadi07@gmail.com'
-	teacherPin.value = 'admin123'
-}
+// Akun contoh hanya muncul saat development, karena siapa pun bisa memakainya
+const showSampleAccount = import.meta.dev
 
 function fillStudentSample() {
 	studentNisn.value = '0012345674'
@@ -121,7 +118,7 @@ function fillStudentSample() {
 									: 'Masuk Guru & Admin'
 						}}
 					</h3>
-					<p class="text-xs text-neutral-500">
+					<p class="text-xs text-muted">
 						{{
 							activeTab === 'student_login'
 								? 'Cukup gunakan NISN dan Tanggal Lahir untuk mulai mengumpulkan XP!'
@@ -133,27 +130,33 @@ function fillStudentSample() {
 				</div>
 
 				<!-- Tab Switches -->
-				<div class="flex items-center gap-1.5 p-1 bg-neutral-100 dark:bg-neutral-800 rounded-xl">
+				<div role="tablist" aria-label="Cara masuk" class="flex items-center gap-1.5 p-1 bg-neutral-100 dark:bg-neutral-800 rounded-xl">
 					<button
 						type="button"
+						role="tab"
+						:aria-selected="activeTab === 'student_login'"
 						class="flex-1 py-1.5 text-xs font-bold rounded-lg transition-all"
-						:class="activeTab === 'student_login' ? 'bg-white dark:bg-neutral-700 shadow-sm text-amber-600 dark:text-amber-400' : 'text-neutral-500 hover:text-neutral-900'"
+						:class="activeTab === 'student_login' ? 'bg-white dark:bg-neutral-700 shadow-sm text-warning' : 'text-toned hover:text-highlighted'"
 						@click="activeTab = 'student_login'; errorMessage = ''"
 					>
 						Masuk Siswa
 					</button>
 					<button
 						type="button"
+						role="tab"
+						:aria-selected="activeTab === 'student_register'"
 						class="flex-1 py-1.5 text-xs font-bold rounded-lg transition-all"
-						:class="activeTab === 'student_register' ? 'bg-white dark:bg-neutral-700 shadow-sm text-amber-600 dark:text-amber-400' : 'text-neutral-500 hover:text-neutral-900'"
+						:class="activeTab === 'student_register' ? 'bg-white dark:bg-neutral-700 shadow-sm text-warning' : 'text-toned hover:text-highlighted'"
 						@click="activeTab = 'student_register'; errorMessage = ''"
 					>
 						Daftar Siswa
 					</button>
 					<button
 						type="button"
+						role="tab"
+						:aria-selected="activeTab === 'teacher_login'"
 						class="flex-1 py-1.5 text-xs font-bold rounded-lg transition-all"
-						:class="activeTab === 'teacher_login' ? 'bg-white dark:bg-neutral-700 shadow-sm text-amber-600 dark:text-amber-400' : 'text-neutral-500 hover:text-neutral-900'"
+						:class="activeTab === 'teacher_login' ? 'bg-white dark:bg-neutral-700 shadow-sm text-warning' : 'text-toned hover:text-highlighted'"
 						@click="activeTab = 'teacher_login'; errorMessage = ''"
 					>
 						Guru / Admin
@@ -176,10 +179,11 @@ function fillStudentSample() {
 					@submit.prevent="handleStudentLogin"
 				>
 					<div class="space-y-1.5">
-						<label class="text-xs font-bold text-neutral-700 dark:text-neutral-300">
+						<label for="authmodal-studentnisn" class="text-xs font-bold text-neutral-700 dark:text-neutral-300">
 							Nomor Induk Siswa Nasional (NISN)
 						</label>
 						<UInput
+							id="authmodal-studentnisn"
 							v-model="studentNisn"
 							placeholder="Contoh: 0012345674"
 							icon="i-lucide-id-card"
@@ -188,10 +192,11 @@ function fillStudentSample() {
 					</div>
 
 					<div class="space-y-1.5">
-						<label class="text-xs font-bold text-neutral-700 dark:text-neutral-300">
+						<label for="authmodal-studentbirthdate" class="text-xs font-bold text-neutral-700 dark:text-neutral-300">
 							Tanggal Lahir (Format: YYYY-MM-DD)
 						</label>
 						<UInput
+							id="authmodal-studentbirthdate"
 							v-model="studentBirthDate"
 							type="date"
 							icon="i-lucide-calendar"
@@ -199,14 +204,16 @@ function fillStudentSample() {
 						/>
 					</div>
 
-					<div class="flex items-center justify-between text-xs pt-1">
-						<button
-							type="button"
-							class="text-amber-600 dark:text-amber-400 underline font-medium hover:opacity-80"
+					<div v-if="showSampleAccount" class="flex items-center justify-between text-xs pt-1">
+						<UButton
+							variant="link"
+							color="warning"
+							size="xs"
+							class="px-0"
 							@click="fillStudentSample"
 						>
-							Coba Akun Contoh (Dewi - Kelas 4)
-						</button>
+							Coba akun contoh (Dewi, kelas 4)
+						</UButton>
 					</div>
 
 					<UButton
@@ -226,8 +233,9 @@ function fillStudentSample() {
 					@submit.prevent="handleStudentRegister"
 				>
 					<div class="space-y-1">
-						<label class="text-xs font-bold text-neutral-700 dark:text-neutral-300">NISN Siswa</label>
+						<label for="authmodal-regnisn" class="text-xs font-bold text-neutral-700 dark:text-neutral-300">NISN Siswa</label>
 						<UInput
+							id="authmodal-regnisn"
 							v-model="regNisn"
 							placeholder="10 digit nomor NISN"
 							icon="i-lucide-id-card"
@@ -236,8 +244,9 @@ function fillStudentSample() {
 					</div>
 
 					<div class="space-y-1">
-						<label class="text-xs font-bold text-neutral-700 dark:text-neutral-300">Nama Lengkap</label>
+						<label for="authmodal-regname" class="text-xs font-bold text-neutral-700 dark:text-neutral-300">Nama Lengkap</label>
 						<UInput
+							id="authmodal-regname"
 							v-model="regName"
 							placeholder="Nama lengkap siswa"
 							icon="i-lucide-user"
@@ -247,32 +256,29 @@ function fillStudentSample() {
 
 					<div class="grid grid-cols-2 gap-3">
 						<div class="space-y-1">
-							<label class="text-xs font-bold text-neutral-700 dark:text-neutral-300">Tanggal Lahir</label>
+							<label for="authmodal-regbirthdate" class="text-xs font-bold text-neutral-700 dark:text-neutral-300">Tanggal Lahir</label>
 							<UInput
+								id="authmodal-regbirthdate"
 								v-model="regBirthDate"
 								type="date"
 								class="w-full"
 							/>
 						</div>
 						<div class="space-y-1">
-							<label class="text-xs font-bold text-neutral-700 dark:text-neutral-300">Tingkat Kelas</label>
-							<select
+							<label for="authmodal-reggrade" class="text-xs font-bold text-neutral-700 dark:text-neutral-300">Tingkat Kelas</label>
+							<USelect
+								id="authmodal-reggrade"
 								v-model="regGrade"
-								class="w-full text-xs rounded-lg border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-900 px-3 py-2 font-medium outline-none"
-							>
-								<option :value="1">Kelas 1 SD</option>
-								<option :value="2">Kelas 2 SD</option>
-								<option :value="3">Kelas 3 SD</option>
-								<option :value="4">Kelas 4 SD</option>
-								<option :value="5">Kelas 5 SD</option>
-								<option :value="6">Kelas 6 SD</option>
-							</select>
+								:items="GRADE_OPTIONS"
+								class="w-full"
+							/>
 						</div>
 					</div>
 
 					<div class="space-y-1">
-						<label class="text-xs font-bold text-neutral-700 dark:text-neutral-300">Nama Sekolah</label>
+						<label for="authmodal-regschool" class="text-xs font-bold text-neutral-700 dark:text-neutral-300">Nama Sekolah</label>
 						<UInput
+							id="authmodal-regschool"
 							v-model="regSchool"
 							placeholder="Contoh: SDN Nusantara 01 / SD Merdeka"
 							icon="i-lucide-school"
@@ -297,39 +303,31 @@ function fillStudentSample() {
 					@submit.prevent="handleTeacherLogin"
 				>
 					<div class="space-y-1.5">
-						<label class="text-xs font-bold text-neutral-700 dark:text-neutral-300">
+						<label for="authmodal-teacheremail" class="text-xs font-bold text-neutral-700 dark:text-neutral-300">
 							Email Guru / Admin
 						</label>
 						<UInput
+							id="authmodal-teacheremail"
 							v-model="teacherEmail"
 							type="email"
-							placeholder="Contoh: dinarpermadi07@gmail.com"
+							placeholder="nama@sekolah.sch.id"
 							icon="i-lucide-mail"
 							class="w-full"
 						/>
 					</div>
 
 					<div class="space-y-1.5">
-						<label class="text-xs font-bold text-neutral-700 dark:text-neutral-300">
+						<label for="authmodal-teacherpin" class="text-xs font-bold text-neutral-700 dark:text-neutral-300">
 							Kata Sandi / PIN
 						</label>
 						<UInput
+							id="authmodal-teacherpin"
 							v-model="teacherPin"
 							type="password"
 							placeholder="Masukkan kata sandi..."
 							icon="i-lucide-lock"
 							class="w-full"
 						/>
-					</div>
-
-					<div class="flex items-center justify-between text-xs pt-1">
-						<button
-							type="button"
-							class="text-amber-600 dark:text-amber-400 underline font-medium hover:opacity-80"
-							@click="fillAdminSample"
-						>
-							Masuk sebagai Super Admin (Dinar Permadi)
-						</button>
 					</div>
 
 					<UButton

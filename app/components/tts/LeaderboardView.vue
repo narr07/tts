@@ -16,7 +16,7 @@ const { data: students, status, refresh } = await useFetch<any[]>(() => {
 <template>
 	<div class="space-y-6 max-w-4xl mx-auto">
 		<!-- Header Banner -->
-		<div class="p-6 rounded-3xl bg-amber-600 text-white shadow-2xl text-center space-y-2 relative overflow-hidden">
+		<div class="p-6 rounded-3xl bg-amber-700 text-white shadow-2xl text-center space-y-2 relative overflow-hidden">
 			<div class="w-14 h-14 rounded-2xl bg-white/20 backdrop-blur-md text-3xl mx-auto flex items-center justify-center shadow-inner">
 				👑
 			</div>
@@ -66,10 +66,10 @@ const { data: students, status, refresh } = await useFetch<any[]>(() => {
 					<p class="font-extrabold text-xs sm:text-sm text-neutral-900 dark:text-neutral-100 line-clamp-1">
 						{{ students[1].name }}
 					</p>
-					<p class="text-[10px] text-neutral-500 line-clamp-1">
+					<p class="text-[10px] text-toned line-clamp-1">
 						{{ students[1].schoolName }}
 					</p>
-					<p class="font-black text-xs text-amber-500 mt-0.5">
+					<p class="font-black text-xs text-amber-700 dark:text-amber-400 mt-0.5">
 						⚡ {{ students[1].totalXp }} XP
 					</p>
 				</div>
@@ -82,7 +82,7 @@ const { data: students, status, refresh } = await useFetch<any[]>(() => {
 			<div class="flex flex-col items-center space-y-2 order-2 -mt-4">
 				<div class="w-14 h-14 sm:w-20 sm:h-20 rounded-3xl bg-amber-100 dark:bg-amber-950/60 border-4 border-amber-400 flex items-center justify-center text-2xl sm:text-4xl shadow-2xl relative">
 					👑
-					<span class="absolute -bottom-2.5 px-2.5 py-0.5 rounded-full bg-amber-500 text-[10px] sm:text-xs text-white font-black shadow-md">
+					<span class="absolute -bottom-2.5 px-2.5 py-0.5 rounded-full bg-amber-700 text-[10px] sm:text-xs text-white font-black shadow-md">
 						#1 Juara
 					</span>
 				</div>
@@ -90,10 +90,10 @@ const { data: students, status, refresh } = await useFetch<any[]>(() => {
 					<p class="font-black text-sm sm:text-base text-neutral-900 dark:text-neutral-100 line-clamp-1">
 						{{ students[0].name }}
 					</p>
-					<p class="text-[10px] sm:text-xs text-neutral-500 line-clamp-1">
+					<p class="text-[10px] sm:text-xs text-toned line-clamp-1">
 						{{ students[0].schoolName }}
 					</p>
-					<p class="font-black text-sm text-amber-500 mt-0.5">
+					<p class="font-black text-sm text-amber-700 dark:text-amber-400 mt-0.5">
 						⚡ {{ students[0].totalXp }} XP
 					</p>
 				</div>
@@ -114,10 +114,10 @@ const { data: students, status, refresh } = await useFetch<any[]>(() => {
 					<p class="font-extrabold text-xs sm:text-sm text-neutral-900 dark:text-neutral-100 line-clamp-1">
 						{{ students[2].name }}
 					</p>
-					<p class="text-[10px] text-neutral-500 line-clamp-1">
+					<p class="text-[10px] text-toned line-clamp-1">
 						{{ students[2].schoolName }}
 					</p>
-					<p class="font-black text-xs text-amber-500 mt-0.5">
+					<p class="font-black text-xs text-amber-700 dark:text-amber-400 mt-0.5">
 						⚡ {{ students[2].totalXp }} XP
 					</p>
 				</div>
@@ -129,12 +129,22 @@ const { data: students, status, refresh } = await useFetch<any[]>(() => {
 
 		<!-- Table List -->
 		<UCard :ui="{ body: 'p-3 sm:p-5' }">
-			<div v-if="status === 'pending'" class="p-8 text-center text-neutral-400">
+			<div v-if="status === 'pending'" class="p-8 text-center text-muted">
 				<UIcon name="i-lucide-loader-2" class="w-6 h-6 animate-spin mx-auto text-amber-500 mb-2" />
 				<p class="text-xs">Memuat peringkat siswa...</p>
 			</div>
 
-			<div v-else-if="!students || students.length === 0" class="p-8 text-center text-neutral-400 text-sm">
+			<UAlert
+				v-else-if="status === 'error'"
+				color="error"
+				variant="subtle"
+				icon="i-lucide-circle-alert"
+				title="Papan peringkat gagal dimuat"
+				description="Periksa koneksi internet, lalu coba lagi."
+				:actions="[{ label: 'Coba lagi', color: 'error', variant: 'outline', onClick: () => refresh() }]"
+			/>
+
+			<div v-else-if="!students || students.length === 0" class="p-8 text-center text-muted text-sm">
 				Belum ada data nilai untuk kelas ini.
 			</div>
 
@@ -150,7 +160,7 @@ const { data: students, status, refresh } = await useFetch<any[]>(() => {
 						<div
 							class="w-8 h-8 rounded-xl flex items-center justify-center font-black text-xs shrink-0"
 							:class="[
-								idx === 0 ? 'bg-amber-500 text-white shadow-md' :
+								idx === 0 ? 'bg-amber-700 text-white shadow-md' :
 								idx === 1 ? 'bg-slate-400 text-white' :
 								idx === 2 ? 'bg-amber-700 text-white' :
 								'bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-400'
@@ -168,7 +178,7 @@ const { data: students, status, refresh } = await useFetch<any[]>(() => {
 									Kelas {{ s.grade }} SD
 								</UBadge>
 							</div>
-							<p class="text-xs text-neutral-500 mt-0.5">
+							<p class="text-xs text-muted mt-0.5">
 								{{ s.schoolName }}
 							</p>
 						</div>
@@ -176,10 +186,10 @@ const { data: students, status, refresh } = await useFetch<any[]>(() => {
 
 					<div class="flex items-center gap-3 text-right">
 						<div>
-							<div class="font-black text-sm text-amber-500">
-								⚡ {{ s.totalXp }} <span class="text-[10px] font-bold text-neutral-400">XP</span>
+							<div class="font-black text-sm text-amber-700 dark:text-amber-400">
+								⚡ {{ s.totalXp }} <span class="text-[10px] font-bold text-muted">XP</span>
 							</div>
-							<div class="text-xs font-bold text-amber-400">
+							<div class="text-xs font-bold text-amber-700 dark:text-amber-400">
 								⭐ {{ s.totalStars }} Bintang
 							</div>
 						</div>

@@ -1,26 +1,7 @@
 import { sqliteTable, text, integer } from 'drizzle-orm/sqlite-core'
-
-export const students = sqliteTable('students', {
-	id: text('id').primaryKey(),
-	nisn: text('nisn').notNull().unique(),
-	name: text('name').notNull(),
-	birthDate: text('birth_date').notNull(), // format: YYYY-MM-DD
-	grade: integer('grade').notNull(), // 1 sampai 6
-	schoolName: text('school_name').notNull(),
-	totalXp: integer('total_xp').notNull().default(0),
-	totalStars: integer('total_stars').notNull().default(0),
-	createdAt: integer('created_at', { mode: 'timestamp' }).$defaultFn(() => new Date())
-})
-
-export const teachers = sqliteTable('teachers', {
-	id: text('id').primaryKey(),
-	name: text('name').notNull(),
-	email: text('email').notNull().unique(),
-	pin: text('pin').notNull(),
-	schoolName: text('school_name').notNull(),
-	role: text('role').notNull().default('teacher'), // 'admin' | 'teacher'
-	createdAt: integer('created_at', { mode: 'timestamp' }).$defaultFn(() => new Date())
-})
+// Tabel user, session, dan account dibuat oleh @nuxtjs/better-auth dari server/auth.config.ts.
+// Alias #auth/schema tidak dikenali saat NuxtHub membundel skema, jadi diimpor lewat path
+import { user } from '../../.nuxt/better-auth/schema.sqlite'
 
 export const puzzles = sqliteTable('puzzles', {
 	id: text('id').primaryKey(),
@@ -30,7 +11,7 @@ export const puzzles = sqliteTable('puzzles', {
 	subject: text('subject').notNull().default('Bahasa Indonesia'), // IPAS, Matematika, PPKn, dll
 	orderIndex: integer('order_index').notNull().default(1), // Posisi urutan level
 	icon: text('icon').notNull().default('i-lucide-book-open'),
-	teacherId: text('teacher_id').references(() => teachers.id),
+	teacherId: text('teacher_id').references(() => user.id, { onDelete: 'set null' }),
 	createdAt: integer('created_at', { mode: 'timestamp' }).$defaultFn(() => new Date()),
 	updatedAt: integer('updated_at', { mode: 'timestamp' }).$defaultFn(() => new Date())
 })
@@ -52,7 +33,7 @@ export const studentProgress = sqliteTable('student_progress', {
 	id: text('id').primaryKey(),
 	studentId: text('student_id')
 		.notNull()
-		.references(() => students.id, { onDelete: 'cascade' }),
+		.references(() => user.id, { onDelete: 'cascade' }),
 	puzzleId: text('puzzle_id')
 		.notNull()
 		.references(() => puzzles.id, { onDelete: 'cascade' }),

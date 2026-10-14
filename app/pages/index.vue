@@ -6,7 +6,7 @@ import AdventurePath from '~/components/tts/AdventurePath.vue'
 import LeaderboardView from '~/components/tts/LeaderboardView.vue'
 import AdminUsers from '~/components/tts/AdminUsers.vue'
 
-const props = defineProps<{
+defineProps<{
 	currentTab: 'path' | 'play' | 'leaderboard' | 'admin' | 'users'
 }>()
 
@@ -21,7 +21,7 @@ function handlePlayPuzzle(puzzle: any) {
 	emit('switchTab', 'play')
 }
 
-function handleSaved(puzzleId: string) {
+function handleSaved() {
 	emit('switchTab', 'path')
 }
 </script>

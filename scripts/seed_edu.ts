@@ -1,5 +1,7 @@
 import { createClient } from '@libsql/client'
 import path from 'node:path'
+import { randomBytes } from 'node:crypto'
+import { hashPassword } from 'better-auth/crypto'
 
 const dbPath = path.resolve('.data/db/sqlite.db')
 const client = createClient({
@@ -13,8 +15,13 @@ async function run() {
 	const adminId = 'usr_admin_dinar'
 	const adminEmail = 'dinarpermadi07@gmail.com'
 	const adminName = 'Dinar Permadi'
-	// Simple hash or plain for demo password 'admin123'
-	const passwordHash = 'admin123'
+	// Sandi admin tidak ditulis di kode: ambil dari env, atau buat acak dan tampilkan sekali
+	const adminPassword = process.env.SEED_ADMIN_PASSWORD || randomBytes(9).toString('base64url')
+	if (!process.env.SEED_ADMIN_PASSWORD) {
+		console.log(`🔑 Sandi admin (${adminEmail}): ${adminPassword}`)
+	}
+	const passwordHash = await hashPassword(adminPassword)
+	const teacherHash = await hashPassword('guru123')
 
 	await client.execute({
 		sql: `INSERT OR REPLACE INTO "user" (id, name, email, role, createdAt, updatedAt, schoolName) 
@@ -38,8 +45,8 @@ async function run() {
 	})
 	await client.execute({
 		sql: `INSERT OR REPLACE INTO "account" (id, accountId, providerId, userId, password, createdAt, updatedAt)
-		VALUES (?, ?, 'credential', ?, 'guru123', ?, ?)`,
-		args: ['acc_teacher_budi', teacher1Email, teacher1Id, now, now]
+		VALUES (?, ?, 'credential', ?, ?, ?, ?)`,
+		args: ['acc_teacher_budi', teacher1Email, teacher1Id, teacherHash, now, now]
 	})
 
 	const teacher2Id = 'usr_teacher_siti'
@@ -51,8 +58,8 @@ async function run() {
 	})
 	await client.execute({
 		sql: `INSERT OR REPLACE INTO "account" (id, accountId, providerId, userId, password, createdAt, updatedAt)
-		VALUES (?, ?, 'credential', ?, 'guru123', ?, ?)`,
-		args: ['acc_teacher_siti', teacher2Email, teacher2Id, now, now]
+		VALUES (?, ?, 'credential', ?, ?, ?, ?)`,
+		args: ['acc_teacher_siti', teacher2Email, teacher2Id, teacherHash, now, now]
 	})
 
 	// 3. Seed Sample Students with Leaderboard stats
@@ -129,7 +136,7 @@ async function run() {
 		await client.execute({
 			sql: `INSERT OR REPLACE INTO "account" (id, accountId, providerId, userId, password, createdAt, updatedAt)
 			VALUES (?, ?, 'credential', ?, ?, ?, ?)`,
-			args: [`acc_${s.id}`, email, s.id, s.birthDate, now, now]
+			args: [`acc_${s.id}`, email, s.id, await hashPassword(s.birthDate), now, now]
 		})
 	}
 

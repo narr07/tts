@@ -1,6 +1,55 @@
 import { db } from 'hub:db'
 import { sql } from 'drizzle-orm'
 
+defineRouteMeta({
+	openAPI: {
+		tags: ['Akun'],
+		operationId: 'loginStudent',
+		summary: 'Masuk sebagai siswa',
+		description: 'Siswa masuk dengan NISN dan tanggal lahir. Simpan `token` dari respons untuk dipakai sebagai Bearer.',
+		requestBody: {
+			required: true,
+			content: {
+				'application/json': {
+					schema: {
+						type: 'object',
+						required: ['nisn', 'birthDate'],
+						properties: {
+							nisn: {
+								type: 'string',
+								example: '0012345674'
+							},
+							birthDate: {
+								type: 'string',
+								format: 'date',
+								example: '2014-11-25'
+							}
+						}
+					}
+				}
+			}
+		},
+		responses: {
+			200: {
+				description: 'Berhasil masuk',
+				content: {
+					'application/json': {
+						schema: {
+							$ref: '#/components/schemas/AuthResponse'
+						}
+					}
+				}
+			},
+			400: {
+				$ref: '#/components/responses/BadRequest'
+			},
+			401: {
+				$ref: '#/components/responses/Unauthorized'
+			}
+		}
+	}
+})
+
 export default defineEventHandler(async (event) => {
 	const body = await readBody(event)
 	const { nisn, birthDate } = body || {}
@@ -30,10 +79,13 @@ export default defineEventHandler(async (event) => {
 		})
 	}
 
-	const student = result[0]
+	const student = result[0] as { id: string }
+	const session = await startSession(event, student.id)
 
 	return {
 		success: true,
+		token: session.token,
+		expiresAt: session.expiresAt,
 		user: student
 	}
 })

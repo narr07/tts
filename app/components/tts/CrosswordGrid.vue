@@ -4,6 +4,7 @@ import confetti from 'canvas-confetti'
 import { useCrosswordStore } from '~/stores/crosswordStore'
 import { useAuthStore } from '~/stores/authStore'
 import { cellKey, type PlacedWord } from '~/utils/crossword'
+import LetterTile from './LetterTile.vue'
 
 const props = defineProps<{
 	hasNext?: boolean
@@ -286,7 +287,8 @@ async function celebrate() {
 			particleCount: 120,
 			spread: 80,
 			origin: { y: 0.55 },
-			colors: ['#10b981', '#f59e0b', '#3b82f6', '#ec4899', '#8b5cf6']
+			// sky, amber, lime: sama dengan warna primary, secondary, dan success di app.config.ts
+			colors: ['#0ea5e9', '#f59e0b', '#84cc16']
 		})
 	} catch {
 		// Konfeti hanya hiasan; kalau gagal, modal kemenangan tetap tampil
@@ -331,6 +333,36 @@ async function celebrate() {
 	}
 }
 
+// Kotak papan selalu putih (seperti kertas TTS) di mode terang maupun gelap, jadi warnanya pakai shade terang yang tetap.
+// Mendatar = secondary (amber), Menurun = primary (sky), sama dengan daftar soal.
+function cellClass(r: number, c: number) {
+	const across = selected.value?.direction === 'across'
+	const isSelected = selected.value?.row === r && selected.value?.col === c
+	const inWord = activeWordCellSet.value.has(cellKey(r, c))
+
+	let bg = 'bg-white hover:bg-neutral-100'
+	if (isSelected) bg = across ? 'bg-secondary-200 ring-3 sm:ring-4 ring-secondary-500 z-20' : 'bg-primary-200 ring-3 sm:ring-4 ring-primary-500 z-20'
+	else if (inWord) bg = across ? 'bg-secondary-100' : 'bg-primary-100'
+
+	const input = userInputs.value[r]?.[c]
+	let text = 'text-neutral-900'
+	if (store.isChecked && input) {
+		text = input.toUpperCase() === layout.value.grid[r]?.[c]?.toUpperCase()
+			? 'text-success-700'
+			: 'text-error-700 bg-error-100'
+	}
+	return [bg, text]
+}
+
+function modalBoxClass(cell: { row: number; col: number }) {
+	if (cell.row === selected.value?.row && cell.col === selected.value?.col) {
+		return selected.value?.direction === 'across'
+			? 'border-secondary bg-secondary/10 ring-4 ring-secondary/30'
+			: 'border-primary bg-primary/10 ring-4 ring-primary/30'
+	}
+	return userInputs.value[cell.row]?.[cell.col] ? 'border-accented bg-elevated' : 'border-accented bg-default'
+}
+
 watch(
 	() => store.selected,
 	(newSel) => {
@@ -344,57 +376,46 @@ watch(
 </script>
 
 <template>
-	<div class="w-full flex flex-col items-center p-1 sm:p-4">
-		<!-- Container Grid Canvas (Tetap Persegi di Mobile dan Desktop) -->
-		<div class="w-full flex justify-center overflow-x-auto py-1">
+	<div class="w-full flex flex-col items-center">
+		<!-- Papan TTS: kotak putih di atas papan gelap, kotak hitam dibiarkan kosong supaya papan terasa lebih ringan.
+			Lebar kotak mengikuti layar (maksimal 52px), jadi papan tidak perlu digeser ke samping di ponsel.
+			Ukuran huruf memakai satuan cqw terhadap lebar papan dibagi jumlah kolom. -->
+		<div class="w-full flex justify-center py-1">
 			<div
 				v-if="layout.width > 0 && layout.height > 0"
-				class="inline-grid gap-0.5 sm:gap-1 bg-neutral-950 p-2 sm:p-3.5 rounded-xl sm:rounded-2xl shadow-2xl border-2 sm:border-4 border-neutral-900 select-none"
+				class="@container w-full grid gap-0.75 sm:gap-1 bg-neutral-800 p-1.5 sm:p-3 rounded-lg shadow-md select-none"
 				:style="{
-					gridTemplateColumns: `repeat(${layout.width}, minmax(0, 1fr))`
+					gridTemplateColumns: `repeat(${layout.width}, minmax(0, 1fr))`,
+					maxWidth: `${layout.width * 3.25 + 1.5}rem`,
+					'--tts-cols': layout.width
 				}"
 			>
 				<template v-for="r in layout.height" :key="`row-${r-1}`">
 					<template v-for="c in layout.width" :key="`cell-${r-1}-${c-1}`">
-						<!-- Kotak BISA DIISI: SELALU PERSEGI (w-8 h-8 / w-11 h-11 aspect-square shrink-0) DAN PUTIH BERSIH -->
 						<div
 							v-if="layout.grid[r-1]?.[c-1]"
-							class="relative aspect-square w-8 h-8 sm:w-11 sm:h-11 md:w-12 md:h-12 shrink-0 transition-all duration-100 rounded-sm sm:rounded-md flex items-center justify-center font-bold select-none cursor-pointer border"
-							:class="[
-								selected?.row === r-1 && selected?.col === c-1
-									? selected.direction === 'across'
-										? 'bg-amber-200 ring-2 sm:ring-4 ring-amber-500 z-20 scale-105 shadow-xl border-amber-600'
-										: 'bg-sky-200 ring-2 sm:ring-4 ring-sky-500 z-20 scale-105 shadow-xl border-sky-600'
-									: activeWordCellSet.has(cellKey(r-1, c-1))
-										? selected?.direction === 'across'
-											? 'bg-amber-100 border-y-2 border-amber-400 border-x-neutral-200 z-10'
-											: 'bg-sky-100 border-x-2 border-sky-400 border-y-neutral-200 z-10'
-										: 'bg-white hover:bg-neutral-100 border-neutral-300',
-								store.isChecked && userInputs[r-1]?.[c-1]
-									? userInputs[r-1]?.[c-1]?.toUpperCase() === layout.grid[r-1]?.[c-1]?.toUpperCase()
-										? 'text-emerald-700 font-black'
-										: 'text-rose-600 bg-rose-50 font-black'
-									: 'text-black'
-							]"
+							class="relative aspect-square w-full rounded-[3px] sm:rounded flex items-center justify-center cursor-pointer transition duration-150"
+							:class="cellClass(r-1, c-1)"
 							@click="handleCellClick(r-1, c-1)"
 						>
-							<!-- Nomor clue di pojok kiri atas kotak putih -->
 							<span
 								v-if="meta.cellNumber.get(cellKey(r-1, c-1))"
-								class="absolute top-0.5 left-0.5 sm:left-1 text-[8px] sm:text-[10px] font-black text-neutral-800 leading-none pointer-events-none select-none z-10"
+								class="absolute top-[6%] left-[8%] text-[max(8px,calc(22cqw/var(--tts-cols)))] font-bold text-neutral-700 leading-none pointer-events-none z-30"
+								aria-hidden="true"
 							>
 								{{ meta.cellNumber.get(cellKey(r-1, c-1)) }}
 							</span>
 
-							<!-- Input field di grid -->
+							<!-- Tanpa outline bawaan: cincin seleksi pada kotak ikut pindah saat fokus (lihat handleCellFocus) -->
 							<input
 								:ref="(el) => setInputRef(el, r-1, c-1)"
 								type="text"
 								maxlength="1"
 								autocomplete="off"
 								autocorrect="off"
+								autocapitalize="characters"
 								spellcheck="false"
-								class="w-full h-full text-center bg-transparent border-0 outline-none p-0 cursor-pointer uppercase font-mono font-black text-black text-sm sm:text-xl z-20"
+								class="w-full h-full text-center bg-transparent border-0 outline-none p-0 cursor-pointer uppercase font-extrabold text-inherit text-[calc(55cqw/var(--tts-cols))] z-20"
 								:aria-label="`Kotak baris ${r}, kolom ${c}`"
 								:value="userInputs[r-1]?.[c-1] || ''"
 								@focus="handleCellFocus(r-1, c-1)"
@@ -404,95 +425,91 @@ watch(
 							>
 						</div>
 
-						<!-- Kotak TIDAK BISA DIISI: SELALU PERSEGI (w-8 h-8 / w-11 h-11 aspect-square shrink-0) DAN HITAM PEKAT -->
 						<div
 							v-else
-							class="aspect-square w-8 h-8 sm:w-11 sm:h-11 md:w-12 md:h-12 shrink-0 bg-black border border-neutral-900 rounded-sm sm:rounded-md pointer-events-none shadow-inner"
+							class="aspect-square w-full"
+							aria-hidden="true"
 						/>
 					</template>
 				</template>
 			</div>
 
-			<div
-				v-else
-				class="p-8 text-center text-muted"
-			>
-				Belum ada kotak teka-teki silang yang dimuat.
-			</div>
+			<p v-else class="p-8 text-center text-muted">
+				Kotak teka-teki silang belum tersedia.
+			</p>
 		</div>
 
-		<!-- MODAL PERTANYAAN (Muncul otomatis saat kotak mana pun ditekan) -->
-		<UModal v-model:open="isModalOpen" :ui="{ content: 'bg-white dark:bg-neutral-900', overlay: 'bg-black/60' }">
+		<!-- MODAL SOAL: muncul setiap kali kotak di papan diketuk -->
+		<UModal
+			v-model:open="isModalOpen"
+			:title="activePlacedWord ? `${activePlacedWord.number} ${selected?.direction === 'across' ? 'Mendatar' : 'Menurun'}, ${activePlacedWord.answer.length} huruf` : 'Soal'"
+			:ui="{ title: selected?.direction === 'across' ? 'text-secondary font-extrabold' : 'text-primary font-extrabold' }"
+		>
 			<template #body>
-				<div class="p-4 sm:p-6 space-y-4 bg-white dark:bg-neutral-900 rounded-2xl shadow-2xl">
-					<!-- Pilihan Arah jika Kotak Persimpangan (Tanpa Icon Panah, Cukup Warna) -->
+				<div class="space-y-5">
+					<!-- Kotak persimpangan: pilih mau isi yang mendatar atau menurun -->
 					<div
 						v-if="cellClues.across && cellClues.down"
-						class="flex items-center gap-2 p-1 bg-neutral-100 dark:bg-neutral-800 rounded-xl justify-center"
+						class="grid grid-cols-2 gap-2"
+						role="group"
+						aria-label="Pilih arah soal"
 					>
-						<button
-							type="button"
-							class="flex-1 py-1.5 px-3 rounded-lg font-bold text-xs flex items-center justify-center gap-2 transition-all"
-							:class="selected?.direction === 'across' ? 'bg-amber-700 text-white shadow-sm' : 'bg-transparent text-neutral-600 dark:text-neutral-400 hover:text-neutral-900'"
+						<UButton
+							block
+							color="secondary"
+							:variant="selected?.direction === 'across' ? 'solid' : 'soft'"
+							icon="i-lucide-arrow-right"
+							:aria-pressed="selected?.direction === 'across'"
+							class="font-bold"
 							@click="switchModalDirection('across')"
 						>
-							<span class="w-2.5 h-2.5 rounded-full bg-amber-200" />
-							<span>{{ cellClues.across.number }} Mendatar</span>
-						</button>
-						<button
-							type="button"
-							class="flex-1 py-1.5 px-3 rounded-lg font-bold text-xs flex items-center justify-center gap-2 transition-all"
-							:class="selected?.direction === 'down' ? 'bg-sky-700 text-white shadow-sm' : 'bg-transparent text-neutral-600 dark:text-neutral-400 hover:text-neutral-900'"
+							{{ cellClues.across.number }} Mendatar
+						</UButton>
+						<UButton
+							block
+							color="primary"
+							:variant="selected?.direction === 'down' ? 'solid' : 'soft'"
+							icon="i-lucide-arrow-down"
+							:aria-pressed="selected?.direction === 'down'"
+							class="font-bold"
 							@click="switchModalDirection('down')"
 						>
-							<span class="w-2.5 h-2.5 rounded-full bg-sky-200" />
-							<span>{{ cellClues.down.number }} Menurun</span>
-						</button>
+							{{ cellClues.down.number }} Menurun
+						</UButton>
 					</div>
 
-					<!-- Header Info Soal (Tanpa Icon Panah, Cukup Warna) -->
-					<div v-if="activePlacedWord" class="space-y-2 text-center">
-						<div
-							class="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-black text-white shadow-sm"
-							:class="selected?.direction === 'across' ? 'bg-amber-700' : 'bg-sky-700'"
-						>
-							<span class="w-2 h-2 rounded-full bg-white animate-pulse" />
-							<span>{{ activePlacedWord.number }} {{ selected?.direction === 'across' ? 'Mendatar' : 'Menurun' }}</span>
-							<span>• {{ activePlacedWord.answer.length }} Huruf</span>
-						</div>
-
-						<p class="font-extrabold text-base sm:text-lg text-neutral-900 dark:text-neutral-100 leading-snug">
+					<div v-if="activePlacedWord" class="flex items-start gap-3">
+						<LetterTile
+							:label="activePlacedWord.number"
+							:color="selected?.direction === 'across' ? 'secondary' : 'primary'"
+						/>
+						<p class="min-w-0 pt-2 text-xl font-bold text-highlighted leading-snug">
 							{{ activePlacedWord.clue }}
 						</p>
 					</div>
 
-					<!-- Input Kotak Huruf Langsung di dalam Modal (Besar & Touch-Friendly 44px) -->
-					<div v-if="currentWordCells.length > 0" class="py-2">
-						<p class="text-xs text-muted text-center mb-2 font-medium">
-							Ketik huruf jawaban langsung di bawah:
+					<div v-if="currentWordCells.length > 0">
+						<p class="text-sm text-muted mb-2">
+							Ketik jawabanmu di sini:
 						</p>
-						<div class="flex justify-center gap-1.5 flex-wrap">
+						<div class="flex flex-wrap gap-1.5">
 							<div
 								v-for="(cell, idx) in currentWordCells"
 								:key="`modal-cell-${cell.row}-${cell.col}`"
-								class="w-11 h-11 rounded-xl border-2 flex items-center justify-center font-bold text-lg aspect-square shadow-sm transition-all cursor-pointer"
-								:class="[
-									cell.row === selected?.row && cell.col === selected?.col
-										? 'border-amber-500 bg-amber-100 ring-2 ring-amber-400 text-black scale-105'
-										: userInputs[cell.row]?.[cell.col]
-											? 'border-neutral-400 bg-neutral-50 dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100'
-											: 'border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-900 text-muted'
-								]"
+								class="size-11 sm:size-12 rounded-md border-2 flex items-center justify-center transition-colors cursor-text"
+								:class="modalBoxClass(cell)"
 								@click="modalInputRefs[idx]?.focus()"
 							>
+								<!-- Tanpa outline bawaan: kotak aktif diberi cincin tebal oleh modalBoxClass -->
 								<input
 									:ref="(el) => setModalInputRef(el, idx)"
 									type="text"
 									maxlength="1"
 									autocomplete="off"
 									autocorrect="off"
+									autocapitalize="characters"
 									spellcheck="false"
-									class="w-full h-full text-center bg-transparent border-0 outline-none uppercase font-mono font-black text-lg p-0"
+									class="w-full h-full text-center bg-transparent border-0 outline-none uppercase font-extrabold text-2xl text-highlighted p-0"
 									:aria-label="`Huruf ke-${idx + 1}`"
 									:value="userInputs[cell.row]?.[cell.col] || ''"
 									@input="(e) => handleModalCellInput(e, cell.row, cell.col, idx)"
@@ -505,36 +522,39 @@ watch(
 
 					<UButton
 						color="primary"
-						size="md"
-						class="w-full font-bold justify-center mt-2"
+						size="xl"
+						block
+						icon="i-lucide-check"
+						class="font-bold"
 						@click="isModalOpen = false"
 					>
-						Selesai Mengisi Soal Ini
+						Selesai
 					</UButton>
 				</div>
 			</template>
 		</UModal>
 
-		<!-- MODAL KEMENANGAN (VICTORY MODAL WITH STARS & XP) -->
-		<UModal v-model:open="isVictoryModalOpen">
+		<!-- MODAL KEMENANGAN -->
+		<UModal
+			v-model:open="isVictoryModalOpen"
+			title="Kamu berhasil!"
+			:ui="{ title: 'sr-only', header: 'justify-end' }"
+		>
 			<template #body>
-				<div class="p-6 text-center space-y-4">
-					<div class="w-20 h-20 rounded-full bg-amber-100 dark:bg-amber-950/60 text-amber-500 mx-auto flex items-center justify-center text-4xl animate-bounce">
-						🎉
-					</div>
+				<div class="py-2 text-center space-y-5">
+					<LetterTile icon="i-lucide-trophy" color="secondary" size="lg" class="star-pop" />
 
 					<div class="space-y-1">
-						<h3 class="font-black text-2xl text-neutral-900 dark:text-neutral-100">
-							Hebat Sekali! Kamu Berhasil!
-						</h3>
-						<p class="text-xs sm:text-sm text-muted">
-							Semua jawaban teka-teki silang telah terisi dengan benar.
+						<p class="font-extrabold text-3xl text-highlighted">
+							Hebat, kamu berhasil!
+						</p>
+						<p class="text-base text-muted">
+							Semua kotak sudah terisi dengan benar.
 						</p>
 					</div>
 
-					<!-- Stars Display -->
 					<div
-						class="flex items-center justify-center gap-2 py-1"
+						class="flex items-center justify-center gap-3 text-6xl leading-none"
 						role="img"
 						:aria-label="`${earnedStars} dari 3 bintang`"
 					>
@@ -542,40 +562,45 @@ watch(
 							v-for="s in 3"
 							:key="`win-star-${s}`"
 							aria-hidden="true"
-							class="text-3xl transition-transform hover:scale-125"
-							:class="s <= earnedStars ? 'text-amber-400' : 'text-neutral-300 dark:text-neutral-700'"
-						>
-							⭐
-						</span>
+							class="star-pop"
+							:class="s <= earnedStars ? 'text-secondary-500' : 'text-accented'"
+							:style="{ animationDelay: `${0.15 + s * 0.15}s` }"
+						>★</span>
 					</div>
 
-					<!-- XP Badge -->
-					<p v-if="isSavingResult" class="text-sm text-muted">
+					<p v-if="isSavingResult" class="text-base text-muted">
 						Menyimpan hasilmu…
 					</p>
-					<UBadge v-else-if="xpAdded" color="warning" variant="soft" size="lg" class="font-black">
-						⚡ +{{ xpAdded }} XP
+					<UBadge
+						v-else-if="xpAdded"
+						color="secondary"
+						variant="soft"
+						size="xl"
+						icon="i-lucide-zap"
+						class="font-extrabold"
+					>
+						+{{ xpAdded }} XP
 					</UBadge>
-					<p v-else-if="xpAdded === 0" class="text-sm text-muted">
+					<p v-else-if="xpAdded === 0" class="text-base text-muted">
 						Teka-teki ini sudah pernah kamu selesaikan. XP hanya bertambah kalau bintangmu lebih banyak dari sebelumnya.
 					</p>
-					<p v-else-if="!auth.isStudent" class="text-sm text-muted">
+					<p v-else-if="!auth.isStudent" class="text-base text-muted">
 						Masuk sebagai siswa supaya bintang dan XP-mu tersimpan.
 					</p>
-					<p v-else class="text-sm text-error">
+					<p v-else class="text-base text-error">
 						Hasilmu belum tersimpan. Periksa internet, lalu coba selesaikan lagi.
 					</p>
 
-					<div class="pt-2">
-						<UButton
-							color="primary"
-							size="lg"
-							class="w-full font-black justify-center"
-							@click="handleContinue"
-						>
-							{{ props.hasNext ? 'Lanjut ke Teka-Teki Berikutnya' : 'Kembali ke Peta Belajar' }}
-						</UButton>
-					</div>
+					<UButton
+						color="primary"
+						size="xl"
+						block
+						:icon="props.hasNext ? 'i-lucide-play' : 'i-lucide-map'"
+						class="font-bold"
+						@click="handleContinue"
+					>
+						{{ props.hasNext ? 'Lanjut ke teka-teki berikutnya' : 'Kembali ke Peta Belajar' }}
+					</UButton>
 				</div>
 			</template>
 		</UModal>

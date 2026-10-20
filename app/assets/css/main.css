@@ -1,25 +1,15 @@
-@import url('https://fonts.googleapis.com/css2?family=Baloo+2:wght@400..800&family=Fredoka:wght@300..700&display=swap');
 @import 'tailwindcss';
 @import '@nuxt/ui';
 
+/* SN Pro: huruf membulat dengan bukaan lebar (a, e, g mudah dibedakan), jadi ramah untuk pembaca awal kelas 1-6.
+   Berkas font diunduh dan di-host sendiri oleh @nuxt/fonts (lihat nuxt.config.ts), bukan @import dari Google saat runtime. */
 @theme {
-	--font-sans: 'Fredoka', sans-serif;
-	--font-serif: 'Baloo 2', sans-serif;
-}
-
-@layer base {
-	h1,
-	h2,
-	h3,
-	h4,
-	h5,
-	h6 {
-		font-family: var(--font-serif);
-	}
+	--font-sans: 'SN Pro', ui-sans-serif, system-ui, sans-serif;
 }
 
 :root {
-	--ui-radius: 0.2rem;
+	/* Sudut sedikit membulat supaya terasa ramah, tapi kotak TTS tetap terbaca sebagai kotak */
+	--ui-radius: 0.5rem;
 }
 
 /* Mode terang: shade 500 bawaan Nuxt UI hanya 1,7 sampai 3,8:1 terhadap putih (sky 2,71, lime 1,95).
@@ -33,6 +23,14 @@
 	--ui-info: var(--ui-color-info-700);
 	--ui-warning: var(--ui-color-warning-800);
 	--ui-error: var(--ui-color-error-700);
+}
+
+@layer base {
+	body {
+		/* Teks dasar 16px dengan jarak baris lega untuk anak yang baru lancar membaca */
+		font-size: 1rem;
+		line-height: 1.6;
+	}
 }
 
 /* Pastikan semua modal dialog dan backdrop selalu berada di lapisan paling depan */
@@ -49,7 +47,64 @@
 	z-index: 90 !important;
 }
 
-/* Custom educational scrollbar */
+/* Ganti tab: konten lama memudar, konten baru naik sedikit, supaya anak tahu layarnya berpindah */
+.tab-enter-active,
+.tab-leave-active {
+	transition: opacity 0.2s ease, transform 0.2s ease;
+}
+.tab-enter-from {
+	opacity: 0;
+	transform: translateY(8px);
+}
+.tab-leave-to {
+	opacity: 0;
+	transform: translateY(-4px);
+}
+
+/* Ganti isi dalam satu layar (memuat -> daftar, ganti kelas): cukup memudar, tanpa geser */
+.fade-enter-active,
+.fade-leave-active {
+	transition: opacity 0.15s ease;
+}
+.fade-enter-from,
+.fade-leave-to {
+	opacity: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.tab-enter-active,
+	.tab-leave-active,
+	.fade-enter-active,
+	.fade-leave-active {
+		transition: none;
+	}
+}
+
+/* Satu-satunya animasi selebrasi: bintang muncul sekali saat menang, tidak berulang */
+@keyframes star-pop {
+	0% {
+		transform: scale(0.3);
+		opacity: 0;
+	}
+	70% {
+		transform: scale(1.2);
+		opacity: 1;
+	}
+	100% {
+		transform: scale(1);
+	}
+}
+
+.star-pop {
+	animation: star-pop 0.45s ease-out both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.star-pop {
+		animation: none;
+	}
+}
+
 ::-webkit-scrollbar {
 	width: 6px;
 	height: 6px;

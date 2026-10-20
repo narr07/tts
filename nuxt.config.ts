@@ -17,6 +17,12 @@ export default defineNuxtConfig({
 		'@pinia/nuxt',
 		'@vueuse/nuxt'
 	],
+	// SN Pro adalah font variabel; tanpa rentang ini @nuxt/fonts hanya mengambil 400 sampai 700
+	fonts: {
+		families: [
+			{ name: 'SN Pro', provider: 'google', weights: ['400 900'] }
+		]
+	},
 	hub: {
 		db: 'sqlite'
 	},
@@ -35,5 +41,14 @@ export default defineNuxtConfig({
 	},
 	devtools: {
 		enabled: false
+	},
+	hooks: {
+		// Halaman /__better-auth-devtools (hanya ada saat dev) membawa CSS global tanpa scope, misalnya
+		// h2 { font-size: 13px; border-bottom }, yang ikut menimpa judul aplikasi. Halaman itu hanya dibuka
+		// lewat tab Nuxt DevTools, dan DevTools dimatikan di atas, jadi aman dibuang dari daftar rute.
+		'pages:resolved'(pages) {
+			const idx = pages.findIndex(p => p.name === 'better-auth-devtools')
+			if (idx !== -1) pages.splice(idx, 1)
+		}
 	}
 })

@@ -15,6 +15,7 @@ const emit = defineEmits<{
 
 const store = useCrosswordStore()
 const selectedPuzzleId = ref<string>('')
+const isRevealConfirmOpen = ref(false)
 
 // Data fetching puzzles list
 const { data: puzzles, status, refresh } = await useFetch<any[]>('/api/puzzles')
@@ -32,7 +33,7 @@ const { resume } = useIntervalFn(() => {
 }, 1000, { immediate: false })
 
 const puzzleItems = computed(() =>
-	(puzzles.value ?? []).map(p => ({ label: `[K${p.grade || 1}] ${p.title}`, value: p.id }))
+	(puzzles.value ?? []).map(p => ({ label: `Kelas ${p.grade || 1}: ${p.title}`, value: p.id }))
 )
 
 const nextPuzzle = computed(() => {
@@ -47,6 +48,12 @@ function selectPuzzle(puzzle: any) {
 	selectedPuzzleId.value = puzzle.id
 	store.initPuzzle(puzzle)
 	resume()
+}
+
+// Kunci jawaban membuat teka-teki tidak dapat bintang, jadi minta konfirmasi dulu
+function confirmReveal() {
+	store.revealAll()
+	isRevealConfirmOpen.value = false
 }
 
 // Watch initialPuzzle prop
@@ -73,106 +80,99 @@ watch(
 </script>
 
 <template>
-	<div class="space-y-6">
-		<!-- Puzzle Picker & Game Bar -->
-		<UCard :ui="{ body: 'p-3 sm:p-4' }">
-			<div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-				<!-- Puzzle Selector & Back Button -->
-				<div class="flex items-center gap-3">
-					<UButton
-						size="sm"
-						variant="ghost"
-						color="neutral"
-						icon="i-lucide-arrow-left"
-						class="shrink-0 cursor-pointer"
-						@click="emit('backToPath')"
-					>
-						Peta Belajar
-					</UButton>
+	<div class="space-y-5">
+		<!-- Kepala permainan -->
+		<section class="space-y-4">
+			<div class="flex items-center justify-between gap-3">
+				<UButton
+					variant="ghost"
+					color="neutral"
+					icon="i-lucide-arrow-left"
+					class="-ml-2.5 font-bold"
+					@click="emit('backToPath')"
+				>
+					Peta Belajar
+				</UButton>
 
-					<div class="p-2.5 rounded-xl bg-amber-500/10 text-amber-500 flex items-center justify-center shrink-0">
-						<UIcon name="i-lucide-puzzle" class="w-6 h-6" />
-					</div>
-					<div>
-						<div class="flex items-center gap-2 flex-wrap">
-							<h2 class="font-black text-base sm:text-lg leading-tight">
-								{{ store.activePuzzle?.title || 'Teka-Teki Silang' }}
-							</h2>
-							<span
-								v-if="store.activePuzzle?.grade"
-								class="px-2 py-0.5 rounded-md text-[10px] font-bold bg-amber-100 text-amber-900 dark:bg-amber-950 dark:text-amber-200 border border-amber-300 dark:border-amber-800"
-							>
-								Kelas {{ store.activePuzzle.grade }} SD
-							</span>
-							<span
-								v-if="store.activePuzzle?.subject"
-								class="px-2 py-0.5 rounded-md text-[10px] font-bold bg-neutral-100 text-neutral-800 dark:bg-neutral-800 dark:text-neutral-200 border border-neutral-300 dark:border-neutral-700"
-							>
-								{{ store.activePuzzle.subject }}
-							</span>
-						</div>
-						<p class="text-xs text-muted mt-0.5 line-clamp-1">
-							{{ store.activePuzzle?.description || 'Silakan isi kotak teka-teki silang!' }}
-						</p>
-					</div>
-				</div>
-
-				<!-- Action Controls & Timer -->
-				<div class="flex items-center gap-2 flex-wrap sm:flex-nowrap justify-between sm:justify-end">
-					<!-- Timer -->
-					<div class="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-neutral-100 dark:bg-neutral-800 text-xs font-mono font-bold">
-						<UIcon name="i-lucide-timer" class="w-4 h-4 text-amber-500" />
-						<span>{{ timerText }}</span>
-					</div>
-
-					<!-- Puzzle Dropdown -->
-					<USelect
-						v-if="puzzleItems.length > 0"
-						v-model="selectedPuzzleId"
-						:items="puzzleItems"
-						aria-label="Pilih teka-teki"
-						size="sm"
-						class="max-w-[200px]"
-						@update:model-value="(id) => selectPuzzle(puzzles?.find(p => p.id === id))"
-					/>
-
-					<UButton
-						size="sm"
-						color="primary"
-						icon="i-lucide-check-circle"
-						@click="store.checkAnswers"
-					>
-						Cek
-					</UButton>
-
-					<UButton
-						size="sm"
-						variant="outline"
-						color="neutral"
-						icon="i-lucide-refresh-cw"
-						@click="store.resetInputs"
-					>
-						Reset
-					</UButton>
-
-					<UButton
-						size="sm"
-						variant="outline"
-						color="neutral"
-						icon="i-lucide-eye"
-						@click="store.revealAll"
-					>
-						Kunci
-					</UButton>
+				<div
+					v-if="store.activePuzzle"
+					class="flex items-center gap-1.5 px-3 h-10 rounded-md bg-default ring ring-default text-base font-bold tabular-nums"
+					role="timer"
+					:aria-label="`Waktu bermain ${timerText}`"
+				>
+					<UIcon name="i-lucide-timer" class="size-5 text-secondary" aria-hidden="true" />
+					<span aria-hidden="true">{{ timerText }}</span>
 				</div>
 			</div>
-		</UCard>
 
-		<!-- Main Play Grid and Clues -->
-		<div v-if="store.activePuzzle" class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-			<!-- Crossword Grid Area (7 cols on desktop) -->
-			<div class="lg:col-span-7 flex flex-col items-center">
-				<UCard class="w-full" :ui="{ body: 'p-2 sm:p-4' }">
+			<div v-if="store.activePuzzle">
+				<div class="flex flex-wrap items-center gap-2 mb-1.5">
+					<UBadge v-if="store.activePuzzle.grade" color="primary" variant="soft" class="font-bold">
+						Kelas {{ store.activePuzzle.grade }} SD
+					</UBadge>
+					<UBadge v-if="store.activePuzzle.subject" color="secondary" variant="soft" class="font-bold">
+						{{ store.activePuzzle.subject }}
+					</UBadge>
+				</div>
+				<h2 class="text-2xl sm:text-3xl font-extrabold tracking-tight text-highlighted leading-tight">
+					{{ store.activePuzzle.title }}
+				</h2>
+				<p v-if="store.activePuzzle.description" class="text-base text-muted mt-1">
+					{{ store.activePuzzle.description }}
+				</p>
+			</div>
+
+			<div v-if="store.activePuzzle" class="flex flex-wrap items-center gap-2">
+				<UButton
+					color="primary"
+					icon="i-lucide-circle-check"
+					class="font-bold"
+					@click="store.checkAnswers"
+				>
+					Cek jawaban
+				</UButton>
+
+				<UButton
+					variant="outline"
+					color="neutral"
+					icon="i-lucide-eraser"
+					class="font-bold"
+					@click="store.resetInputs"
+				>
+					Hapus isian
+				</UButton>
+
+				<UButton
+					variant="ghost"
+					color="neutral"
+					icon="i-lucide-key-round"
+					class="font-bold"
+					:disabled="store.isRevealed"
+					@click="isRevealConfirmOpen = true"
+				>
+					Lihat kunci
+				</UButton>
+
+				<USelect
+					v-if="puzzleItems.length > 1"
+					v-model="selectedPuzzleId"
+					:items="puzzleItems"
+					aria-label="Ganti teka-teki"
+					icon="i-lucide-list"
+					class="w-full sm:w-64 sm:ml-auto"
+					@update:model-value="(id) => selectPuzzle(puzzles?.find(p => p.id === id))"
+				/>
+			</div>
+		</section>
+
+		<!-- Papan TTS dan daftar soal. Key ikut id teka-teki supaya ganti teka-teki juga memudar -->
+		<Transition name="fade" mode="out-in">
+		<div v-if="store.activePuzzle" :key="`papan-${store.activePuzzle.id}`" class="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
+			<div class="lg:col-span-7">
+				<UCard :ui="{ body: 'p-3 sm:p-5' }">
+					<p class="text-sm text-muted text-center mb-3">
+						Ketuk kotak putih untuk membaca soal dan mengisi jawabannya.
+					</p>
 					<CrosswordGrid
 						:has-next="!!nextPuzzle"
 						@next="selectPuzzle(nextPuzzle)"
@@ -181,7 +181,6 @@ watch(
 				</UCard>
 			</div>
 
-			<!-- Clues Panel Area (5 cols on desktop) -->
 			<div class="lg:col-span-5">
 				<CluesPanel />
 			</div>
@@ -201,13 +200,32 @@ watch(
 			v-else-if="status === 'success' && puzzleItems.length === 0"
 			icon="i-lucide-book-open"
 			title="Belum ada teka-teki"
-			description="Guru belum membuat teka-teki silang. Coba buka lagi nanti."
+			description="Gurumu belum membuat teka-teki silang. Coba buka lagi nanti."
+			variant="outline"
+			size="xl"
 		/>
 
-		<!-- Loading State -->
-		<div v-else class="p-12 text-center text-muted">
-			<UIcon name="i-lucide-loader-2" class="w-8 h-8 animate-spin mx-auto text-amber-500 mb-2" />
-			<p class="text-sm">Menyiapkan teka-teki silang...</p>
+		<div v-else class="grid grid-cols-1 lg:grid-cols-12 gap-5" aria-busy="true" aria-label="Menyiapkan teka-teki">
+			<USkeleton class="lg:col-span-7 h-80 rounded-lg" />
+			<USkeleton class="lg:col-span-5 h-80 rounded-lg" />
 		</div>
+		</Transition>
+
+		<UModal
+			v-model:open="isRevealConfirmOpen"
+			title="Buka kunci jawaban?"
+			description="Semua kotak akan langsung terisi jawaban yang benar. Teka-teki ini tidak memberi bintang dan XP kalau kuncinya dibuka."
+		>
+			<template #footer>
+				<div class="flex flex-wrap justify-end gap-2 w-full">
+					<UButton color="neutral" variant="outline" class="font-bold" @click="isRevealConfirmOpen = false">
+						Coba sendiri dulu
+					</UButton>
+					<UButton color="error" icon="i-lucide-key-round" class="font-bold" @click="confirmReveal">
+						Buka kunci
+					</UButton>
+				</div>
+			</template>
+		</UModal>
 	</div>
 </template>

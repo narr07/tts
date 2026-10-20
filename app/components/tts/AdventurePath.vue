@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
 import { useAuthStore } from '~/stores/authStore'
+import LetterTile from './LetterTile.vue'
 
 const emit = defineEmits<{
 	(e: 'playPuzzle', puzzle: any): void
@@ -73,68 +74,80 @@ const completedPuzzleMap = computed(() => {
 	}
 	return map
 })
+
+const firstName = computed(() => auth.isStudent ? auth.currentUser?.name?.split(' ')[0] : '')
+const doneCount = computed(() => puzzles.value.filter(p => completedPuzzleMap.value[p.id]).length)
+// Misi pertama yang belum selesai jadi titik fokus: kotak biru dan tombol penuh, misi lain lebih tenang
+const nextMissionId = computed(() => puzzles.value.find(p => !completedPuzzleMap.value[p.id])?.id)
 </script>
 
 <template>
-	<div class="space-y-6 max-w-2xl mx-auto pb-16">
-		<!-- Kartu Filter & Pemilihan Kelas -->
-		<UCard :ui="{ body: 'p-4 sm:p-5' }">
-			<div class="flex items-center justify-between gap-3 mb-4">
-				<div>
-					<span class="text-[11px] font-black uppercase tracking-wider text-primary">
-						Jalur Petualangan Belajar
-					</span>
-					<h2 class="text-xl sm:text-2xl font-black tracking-tight">
-						Pilih Tingkat Kelas
-					</h2>
-				</div>
-				<span class="px-2.5 py-1 rounded-xl text-xs font-bold text-amber-900 dark:text-amber-200 bg-amber-100 dark:bg-amber-950 border border-amber-300 dark:border-amber-800">
-					{{ currentTheme.phase }}
-				</span>
+	<div class="max-w-2xl mx-auto space-y-6">
+		<!-- Pemilihan kelas -->
+		<section aria-labelledby="judul-peta" class="space-y-4">
+			<div>
+				<h2 id="judul-peta" class="text-2xl sm:text-3xl font-extrabold tracking-tight text-highlighted">
+					{{ firstName ? `Halo, ${firstName}!` : 'Peta Belajar' }}
+				</h2>
+				<p class="text-base text-muted mt-1">
+					Pilih kelasmu, lalu selesaikan misinya satu per satu.
+				</p>
 			</div>
 
-			<!-- Grid Tombol Kelas 1-6 (Menggunakan komponen resmi UButton Nuxt UI) -->
 			<div class="grid grid-cols-3 sm:grid-cols-6 gap-2">
 				<UButton
 					v-for="g in 6"
 					:key="`grade-${g}`"
 					block
 					:color="selectedGrade === g ? 'primary' : 'neutral'"
-					:variant="selectedGrade === g ? 'solid' : 'subtle'"
+					:variant="selectedGrade === g ? 'solid' : 'outline'"
 					:icon="gradeThemes[g]?.icon"
-					class="flex-col h-16 font-black cursor-pointer rounded-xl"
+					:aria-pressed="selectedGrade === g"
+					class="flex-col gap-1 h-18 font-bold text-base"
+					:ui="{ leadingIcon: 'size-6' }"
 					@click="selectedGrade = g"
 				>
 					Kelas {{ g }}
 				</UButton>
 			</div>
 
-			<!-- Filter Mata Pelajaran Dinamis (Hanya tampil jika ada lebih dari 1 opsi) -->
-			<div
-				v-if="availableSubjects.length > 1"
-				class="pt-3 mt-4 border-t border-neutral-100 dark:border-neutral-800 flex items-center gap-2 overflow-x-auto pb-1"
-			>
-				<span class="text-xs font-bold text-muted shrink-0">Pelajaran:</span>
-				<div class="flex items-center gap-1.5 flex-nowrap sm:flex-wrap">
-					<UButton
-						v-for="subj in availableSubjects"
-						:key="subj"
-						size="xs"
-						:variant="selectedSubject === subj ? 'solid' : 'subtle'"
-						:color="selectedSubject === subj ? 'primary' : 'neutral'"
-						class="font-bold shrink-0 rounded-lg cursor-pointer"
-						@click="selectedSubject = subj"
-					>
-						{{ subj }}
-					</UButton>
-				</div>
+			<div class="flex flex-wrap items-center gap-2">
+				<UBadge color="secondary" variant="soft" size="lg" class="font-bold">
+					{{ currentTheme.phase }}
+				</UBadge>
+				<span v-if="status === 'success' && puzzles.length > 0 && auth.isStudent" class="text-sm text-muted">
+					{{ doneCount }} dari {{ puzzles.length }} misi selesai
+				</span>
 			</div>
-		</UCard>
 
-		<!-- Loading State (UIcon animate-spin) -->
-		<div v-if="status === 'pending'" class="p-16 text-center text-muted">
-			<UIcon name="i-lucide-loader-2" class="w-8 h-8 animate-spin mx-auto text-primary mb-3" />
-			<p class="text-sm font-bold">Memuat peta petualangan kata...</p>
+			<!-- Filter mata pelajaran, hanya kalau kelas ini punya lebih dari satu -->
+			<div
+				v-if="availableSubjects.length > 2"
+				class="flex items-center gap-2 overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0 py-1"
+				role="group"
+				aria-label="Pilih mata pelajaran"
+			>
+				<UButton
+					v-for="subj in availableSubjects"
+					:key="subj"
+					:variant="selectedSubject === subj ? 'solid' : 'soft'"
+					:color="selectedSubject === subj ? 'secondary' : 'neutral'"
+					:aria-pressed="selectedSubject === subj"
+					class="font-bold shrink-0"
+					@click="selectedSubject = subj"
+				>
+					{{ subj }}
+				</UButton>
+			</div>
+		</section>
+
+		<!-- Memuat, galat, kosong, dan daftar misi bergantian dengan memudar -->
+		<Transition name="fade" mode="out-in">
+		<div v-if="status === 'pending'" class="space-y-4" aria-busy="true" aria-label="Memuat misi">
+			<div v-for="n in 3" :key="n" class="flex items-center gap-4">
+				<USkeleton class="size-12 rounded-md" />
+				<USkeleton class="h-28 flex-1 rounded-lg" />
+			</div>
 		</div>
 
 		<UAlert
@@ -147,80 +160,64 @@ const completedPuzzleMap = computed(() => {
 			:actions="[{ label: 'Coba lagi', color: 'error', variant: 'outline', onClick: () => refresh() }]"
 		/>
 
-		<!-- Empty State (Menggunakan komponen resmi UEmpty Nuxt UI) -->
 		<UEmpty
 			v-else-if="!puzzles || puzzles.length === 0"
 			icon="i-lucide-book-open"
-			title="Belum Ada Soal TTS"
-			:description="`Belum ada teka-teki silang yang dibuat guru untuk kategori pelajaran ini di Kelas ${selectedGrade}.`"
-			class="p-8 border border-neutral-200 dark:border-neutral-800 rounded-2xl shadow-sm bg-white dark:bg-neutral-900"
-		>
-			<template #actions>
-				<UButton
-					size="sm"
-					variant="soft"
-					color="primary"
-					class="font-bold cursor-pointer"
-					@click="selectedSubject = 'Semua'"
-				>
-					Lihat Semua Pelajaran
-				</UButton>
-			</template>
-		</UEmpty>
+			:title="`Belum ada misi untuk Kelas ${selectedGrade}`"
+			description="Gurumu belum membuat teka-teki silang di kelas ini. Coba pilih kelas lain dulu."
+			variant="outline"
+			size="xl"
+		/>
 
-		<!-- Daftar Kartu Teka-Teki Silang (Peta Misi) -->
-		<div v-else class="space-y-4">
-			<UCard
+		<ol v-else :key="`misi-${selectedSubject}`" class="relative space-y-4" aria-label="Daftar misi">
+			<!-- Jalur misi: kotak bernomor disambung garis putus-putus. Key ikut pelajaran supaya ganti filter juga memudar -->
+			<span
+				aria-hidden="true"
+				class="absolute left-6 top-6 bottom-6 -translate-x-1/2 border-l-2 border-dashed border-accented"
+			/>
+			<li
 				v-for="(puzzle, idx) in puzzles"
 				:key="puzzle.id"
-				class="cursor-pointer hover:shadow-md transition-all active:scale-[0.99]"
-				:class="completedPuzzleMap[puzzle.id] ? 'ring-2 ring-amber-400/80 bg-amber-50/10' : ''"
-				:ui="{ body: 'p-4 sm:p-5' }"
-				@click="emit('playPuzzle', puzzle)"
+				class="relative flex items-center gap-3 sm:gap-4"
 			>
-				<div class="flex items-center justify-between gap-3 sm:gap-4">
-					<div class="flex items-center gap-3 sm:gap-4 min-w-0">
-						<!-- Icon Milestone Box -->
-						<div
-							class="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl flex flex-col items-center justify-center shrink-0 shadow-sm border-b-2 select-none"
-							:class="[
-								completedPuzzleMap[puzzle.id]
-									? 'bg-amber-500 border-amber-700 text-inverted'
-									: 'bg-primary border-primary-600 text-inverted shadow-primary/20'
-							]"
-						>
-							<UIcon
-								:name="completedPuzzleMap[puzzle.id] ? 'i-lucide-check-check' : puzzle.icon || 'i-lucide-puzzle'"
-								class="w-6 h-6 sm:w-7 sm:h-7"
-							/>
-							<span class="text-[10px] sm:text-xs font-black tracking-tight mt-0.5 leading-none">
-								Misi {{ idx + 1 }}
-							</span>
-						</div>
+				<LetterTile
+					v-if="completedPuzzleMap[puzzle.id]"
+					icon="i-lucide-check"
+					color="success"
+					role="img"
+					:aria-label="`Misi ${idx + 1}, selesai`"
+				/>
+				<LetterTile
+					v-else
+					:label="idx + 1"
+					:color="puzzle.id === nextMissionId ? 'primary' : 'neutral'"
+					role="img"
+					:aria-label="puzzle.id === nextMissionId ? `Misi ${idx + 1}, misi berikutnya` : `Misi ${idx + 1}`"
+				/>
 
-						<!-- Info Soal -->
-						<div class="min-w-0">
-							<div class="flex items-center gap-2 mb-1">
-								<span class="px-2 py-0.5 rounded-md text-[11px] font-bold bg-amber-100 text-amber-900 dark:bg-amber-950 dark:text-amber-200 border border-amber-300 dark:border-amber-800">
-									{{ puzzle.subject }}
-								</span>
-								<span class="text-[11px] text-neutral-600 dark:text-neutral-400 font-medium">
-									{{ puzzle.questionCount }} Kotak Soal
-								</span>
-							</div>
-							<h3 class="text-sm sm:text-base font-extrabold text-neutral-900 dark:text-neutral-100 truncate hover:text-primary transition-colors">
-								{{ puzzle.title }}
-							</h3>
-							<p class="text-xs text-neutral-500 dark:text-neutral-400 line-clamp-1 mt-0.5">
-								{{ puzzle.description || 'Selesaikan tantangan teka-teki silang ini dan kumpulkan bintang!' }}
-							</p>
-						</div>
+				<UCard
+					class="flex-1 min-w-0 cursor-pointer transition-shadow hover:shadow-md hover:ring-primary/50"
+					:class="puzzle.id === nextMissionId ? 'ring-2 ring-primary' : ''"
+					:ui="{ body: 'p-4 sm:p-5' }"
+					@click="emit('playPuzzle', puzzle)"
+				>
+					<div class="flex flex-wrap items-center gap-x-2 gap-y-1 mb-1.5">
+						<UBadge v-if="puzzle.subject" color="secondary" variant="soft" class="font-bold">
+							{{ puzzle.subject }}
+						</UBadge>
+						<span class="text-sm text-muted">{{ puzzle.questionCount }} soal</span>
 					</div>
 
-					<!-- Sisi Kanan: Bintang & Tombol Aksi -->
-					<div class="flex flex-col items-end gap-1.5 shrink-0 pl-1">
-						<div
-							class="flex gap-0.5 bg-neutral-100 dark:bg-neutral-800 px-2 py-1 rounded-lg"
+					<h3 class="text-lg font-extrabold leading-snug text-highlighted">
+						{{ puzzle.title }}
+					</h3>
+					<p v-if="puzzle.description" class="text-sm text-muted line-clamp-2 mt-0.5">
+						{{ puzzle.description }}
+					</p>
+
+					<div class="mt-3 flex items-center justify-between gap-3">
+						<span
+							class="flex gap-0.5 text-2xl leading-none"
 							role="img"
 							:aria-label="`${completedPuzzleMap[puzzle.id]?.stars ?? 0} dari 3 bintang`"
 						>
@@ -228,25 +225,24 @@ const completedPuzzleMap = computed(() => {
 								v-for="star in 3"
 								:key="star"
 								aria-hidden="true"
-								class="text-xs sm:text-sm leading-none"
-								:class="(completedPuzzleMap[puzzle.id]?.stars ?? 0) >= star ? 'text-amber-400' : 'text-neutral-300 dark:text-neutral-600'"
-							>
-								★
-							</span>
-						</div>
+								:class="(completedPuzzleMap[puzzle.id]?.stars ?? 0) >= star ? 'text-secondary-500' : 'text-dimmed opacity-40'"
+							>★</span>
+						</span>
 
 						<UButton
-							size="xs"
-							:color="completedPuzzleMap[puzzle.id] ? 'primary' : 'neutral'"
-							:variant="completedPuzzleMap[puzzle.id] ? 'subtle' : 'solid'"
-							trailing-icon="i-lucide-play"
-							class="font-bold cursor-pointer"
+							:color="completedPuzzleMap[puzzle.id] ? 'neutral' : 'primary'"
+							:variant="completedPuzzleMap[puzzle.id] ? 'outline' : puzzle.id === nextMissionId ? 'solid' : 'soft'"
+							:icon="completedPuzzleMap[puzzle.id] ? 'i-lucide-rotate-ccw' : 'i-lucide-play'"
+							class="font-bold"
+							@click.stop="emit('playPuzzle', puzzle)"
 						>
-							{{ completedPuzzleMap[puzzle.id] ? 'Ulangi' : 'Mainkan' }}
+							{{ completedPuzzleMap[puzzle.id] ? 'Main lagi' : 'Mainkan' }}
 						</UButton>
 					</div>
-				</div>
-			</UCard>
-		</div>
+				</UCard>
+			</li>
+		</ol>
+		</Transition>
 	</div>
 </template>
+

@@ -3,6 +3,7 @@ import { ref, computed } from 'vue'
 import { useAuthStore } from '~/stores/authStore'
 import AuthModal from '~/components/tts/AuthModal.vue'
 import ProfileModal from '~/components/tts/ProfileModal.vue'
+import LetterTile from '~/components/tts/LetterTile.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -21,194 +22,164 @@ const currentTab = computed<TabType>({
 		}
 		return 'path' // Default ke jalur petualangan kata!
 	},
-	set: (val) => router.push({ query: { ...route.query, tab: val === 'path' ? undefined : val } })
+	set: val => router.push({ query: { ...route.query, tab: val === 'path' ? undefined : val } })
+})
+
+// short dipakai di navigasi bawah (ponsel/tablet) yang lebarnya terbatas
+const navItems = computed(() => [
+	{ tab: 'path' as const, label: 'Peta Belajar', short: 'Peta', icon: 'i-lucide-map' },
+	{ tab: 'play' as const, label: 'Bermain', short: 'Main', icon: 'i-lucide-gamepad-2' },
+	{ tab: 'leaderboard' as const, label: 'Peringkat', short: 'Peringkat', icon: 'i-lucide-trophy' },
+	...(auth.isTeacher ? [{ tab: 'admin' as const, label: 'Studio Guru', short: 'Studio', icon: 'i-lucide-pencil-ruler' }] : []),
+	...(auth.isAdmin ? [{ tab: 'users' as const, label: 'Kelola Pengguna', short: 'Pengguna', icon: 'i-lucide-shield-check' }] : [])
+])
+
+const roleText = computed(() => {
+	const u = auth.currentUser
+	if (!u) return ''
+	if (auth.isAdmin) return 'Super Admin'
+	if (auth.isTeacher) return 'Guru Pembimbing'
+	return `Kelas ${u.grade} SD`
 })
 </script>
 
 <template>
-	<UApp>
-		<div class="min-h-screen flex flex-col bg-neutral-50 dark:bg-neutral-950 text-neutral-900 dark:text-neutral-100 font-sans transition-colors duration-200">
-			<!-- Header Utama -->
-			<header class="sticky top-0 z-40 border-b border-neutral-200/80 dark:border-neutral-800 bg-white/95 dark:bg-neutral-900/95 backdrop-blur-md">
-				<!-- Di bawah lg, nav turun ke baris kedua supaya logo, nav, dan tombol akun tidak berdesakan -->
-				<div class="max-w-7xl mx-auto px-3 sm:px-6 py-2 lg:py-0 lg:h-16 flex flex-wrap lg:flex-nowrap items-center justify-between gap-2 sm:gap-4">
-					<!-- Logo & Brand -->
-					<div
-						class="flex items-center gap-2.5 cursor-pointer shrink-0 select-none"
-						@click="currentTab = 'path'"
+	<UApp :tooltip="{ delayDuration: 200 }">
+		<div class="min-h-dvh flex flex-col bg-muted text-default font-sans">
+			<header class="sticky top-0 z-40 border-b border-default bg-default">
+				<div class="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-3">
+					<!-- Logo -->
+					<NuxtLink
+						to="/"
+						class="flex items-center gap-2.5 shrink-0 min-w-0 rounded-md focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+						aria-label="Petualangan Kata SD, kembali ke Peta Belajar"
 					>
-						<div class="w-10 h-10 rounded-2xl bg-primary text-inverted flex items-center justify-center shadow-md shadow-primary/20 font-black text-xl">
-							🧩
-						</div>
-						<div>
-							<h1 class="font-black text-base sm:text-lg tracking-tight leading-tight flex items-center gap-1.5">
-								<span>Petualangan Kata SD</span>
-								<span class="hidden sm:inline px-2 py-0.5 rounded-md text-[10px] font-black bg-amber-100 text-amber-900 dark:bg-amber-950 dark:text-amber-200 border border-amber-300 dark:border-amber-800">
-									Kelas 1-6
-								</span>
-							</h1>
-							<p class="text-[10px] sm:text-xs text-muted hidden sm:block">
-								Teka-Teki Silang Tematik Kurikulum Merdeka
-							</p>
-						</div>
-					</div>
+						<LetterTile icon="i-lucide-puzzle" color="primary" size="sm" />
+						<!-- Saat masuk, layar sempit butuh tempat untuk XP, avatar, dan tombol keluar; nama aplikasi disembunyikan dulu -->
+						<span class="min-w-0" :class="auth.isLoggedIn ? 'hidden sm:block' : 'block'">
+							<span class="block font-extrabold text-base sm:text-lg leading-tight truncate">Petualangan Kata</span>
+							<span class="hidden sm:block text-xs text-muted leading-tight">TTS untuk Kelas 1 sampai 6 SD</span>
+						</span>
+					</NuxtLink>
 
-					<!-- Navigation Tabs -->
-					<nav aria-label="Navigasi Utama" class="order-last lg:order-none w-full lg:w-auto min-w-0 flex items-center gap-1 p-1 bg-neutral-100 dark:bg-neutral-800 rounded-xl overflow-x-auto">
-						<button
-							type="button"
-							:aria-current="currentTab === 'path' ? 'page' : undefined"
-							class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all shrink-0 cursor-pointer"
-							:class="currentTab === 'path' ? 'bg-white dark:bg-neutral-700 shadow-sm text-primary dark:text-primary-400' : 'text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-neutral-100'"
-							@click="currentTab = 'path'"
+					<!-- Navigasi atas, hanya di layar lebar -->
+					<nav aria-label="Navigasi utama" class="hidden lg:flex items-center gap-1">
+						<UButton
+							v-for="item in navItems"
+							:key="item.tab"
+							:icon="item.icon"
+							:color="currentTab === item.tab ? 'primary' : 'neutral'"
+							:variant="currentTab === item.tab ? 'soft' : 'ghost'"
+							:aria-current="currentTab === item.tab ? 'page' : undefined"
+							class="font-bold"
+							@click="currentTab = item.tab"
 						>
-							<UIcon name="i-lucide-map" class="w-4 h-4" />
-							<span>Peta Belajar</span>
-						</button>
-
-						<button
-							type="button"
-							:aria-current="currentTab === 'play' ? 'page' : undefined"
-							class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all shrink-0 cursor-pointer"
-							:class="currentTab === 'play' ? 'bg-white dark:bg-neutral-700 shadow-sm text-primary dark:text-primary-400' : 'text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-neutral-100'"
-							@click="currentTab = 'play'"
-						>
-							<UIcon name="i-lucide-gamepad-2" class="w-4 h-4" />
-							<span>Bermain</span>
-						</button>
-
-						<button
-							type="button"
-							:aria-current="currentTab === 'leaderboard' ? 'page' : undefined"
-							class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all shrink-0 cursor-pointer"
-							:class="currentTab === 'leaderboard' ? 'bg-white dark:bg-neutral-700 shadow-sm text-primary dark:text-primary-400' : 'text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-neutral-100'"
-							@click="currentTab = 'leaderboard'"
-						>
-							<UIcon name="i-lucide-trophy" class="w-4 h-4" />
-							<span>Peringkat</span>
-						</button>
-
-						<!-- Admin Studio Tab (Visible to Teacher and Super Admin) -->
-						<button
-							v-if="auth.isTeacher"
-							type="button"
-							:aria-current="currentTab === 'admin' ? 'page' : undefined"
-							class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all shrink-0 cursor-pointer"
-							:class="currentTab === 'admin' ? 'bg-white dark:bg-neutral-700 shadow-sm text-primary dark:text-primary-400' : 'text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-neutral-100'"
-							@click="currentTab = 'admin'"
-						>
-							<UIcon name="i-lucide-pencil-ruler" class="w-4 h-4" />
-							<span>Studio Guru</span>
-						</button>
-
-						<!-- Super Admin Users Management Tab -->
-						<button
-							v-if="auth.isAdmin"
-							type="button"
-							:aria-current="currentTab === 'users' ? 'page' : undefined"
-							class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all shrink-0 cursor-pointer"
-							:class="currentTab === 'users' ? 'bg-white dark:bg-neutral-700 shadow-sm text-primary dark:text-primary-400' : 'text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-neutral-100'"
-							@click="currentTab = 'users'"
-						>
-							<UIcon name="i-lucide-shield-check" class="w-4 h-4 text-primary" />
-							<span>Kelola Pengguna</span>
-						</button>
+							{{ item.label }}
+						</UButton>
 					</nav>
 
-					<!-- User Profile / Auth Button -->
+					<!-- Akun -->
 					<div class="flex items-center gap-2 shrink-0">
-						<!-- Jika Sudah Login -->
-						<div v-if="auth.isLoggedIn && auth.currentUser" class="flex items-center gap-2">
-							<!-- Siswa Stats Pill -->
+						<template v-if="auth.isLoggedIn && auth.currentUser">
 							<div
 								v-if="auth.isStudent"
-								class="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-900/50 text-xs"
+								class="flex items-center gap-2.5 px-3 h-10 rounded-md bg-secondary/10 text-secondary font-extrabold text-sm"
 							>
-								<span class="font-extrabold text-amber-700 dark:text-amber-400">⚡ {{ auth.currentUser.totalXp || 0 }} XP</span>
-								<span class="text-neutral-300 dark:text-neutral-700">•</span>
-								<span class="font-bold text-amber-700 dark:text-amber-400">⭐ {{ auth.currentUser.totalStars || 0 }}</span>
+								<span class="flex items-center gap-1" :aria-label="`${auth.currentUser.totalXp || 0} XP`">
+									<UIcon name="i-lucide-zap" class="size-4" aria-hidden="true" />
+									<span aria-hidden="true">{{ auth.currentUser.totalXp || 0 }}</span>
+								</span>
+								<span class="flex items-center gap-1" :aria-label="`${auth.currentUser.totalStars || 0} bintang`">
+									<span aria-hidden="true" class="text-base leading-none">★</span>
+									<span aria-hidden="true">{{ auth.currentUser.totalStars || 0 }}</span>
+								</span>
 							</div>
 
-							<!-- User Badge (Dapat diklik untuk edit profil sendiri) -->
-							<div class="flex items-center gap-1.5 pl-2">
-								<button
-									type="button"
-									class="text-right hidden sm:block hover:opacity-80 transition-opacity cursor-pointer group select-none"
-									title="Klik untuk mengedit profil Anda"
-									@click="isProfileModalOpen = true"
-								>
-									<p class="font-extrabold text-xs text-neutral-900 dark:text-neutral-100 line-clamp-1 group-hover:text-primary transition-colors flex items-center justify-end gap-1">
-										<span>{{ auth.currentUser.name }}</span>
-										<UIcon name="i-lucide-pencil" class="w-3 h-3 text-muted group-hover:text-primary" />
-									</p>
-									<p class="text-[10px] text-muted line-clamp-1">
-										{{ auth.isAdmin ? 'Super Admin' : auth.isTeacher ? 'Guru Pembimbing' : `Kelas ${auth.currentUser.grade} SD · ${auth.currentUser.schoolName}` }}
-									</p>
-								</button>
-
+							<UTooltip text="Ubah profil">
 								<UButton
-									size="xs"
 									color="neutral"
 									variant="ghost"
-									icon="i-lucide-user-pen"
-									title="Edit Profil Saya"
-									class="cursor-pointer"
+									class="hidden sm:flex text-left"
 									@click="isProfileModalOpen = true"
-								/>
+								>
+									<UAvatar :alt="auth.currentUser.name" size="sm" />
+									<span class="min-w-0 max-w-36">
+										<span class="block font-bold text-sm leading-tight truncate">{{ auth.currentUser.name }}</span>
+										<span class="block text-xs text-muted leading-tight truncate">{{ roleText }}</span>
+									</span>
+								</UButton>
+							</UTooltip>
 
+							<UTooltip text="Ubah profil">
 								<UButton
-									size="xs"
+									color="neutral"
+									variant="ghost"
+									class="sm:hidden"
+									aria-label="Ubah profil"
+									@click="isProfileModalOpen = true"
+								>
+									<UAvatar :alt="auth.currentUser.name" size="sm" />
+								</UButton>
+							</UTooltip>
+
+							<UTooltip text="Keluar dari akun">
+								<UButton
 									color="neutral"
 									variant="outline"
 									icon="i-lucide-log-out"
-									title="Keluar Akun"
-									class="cursor-pointer"
+									aria-label="Keluar dari akun"
 									@click="auth.logout"
-								>
-									Keluar
-								</UButton>
-							</div>
-						</div>
+								/>
+							</UTooltip>
+						</template>
 
-						<!-- Jika Belum Login (Guest) -->
-						<div v-else>
-							<UButton
-								size="sm"
-								color="primary"
-								icon="i-lucide-log-in"
-								class="font-black text-xs cursor-pointer"
-								@click="isAuthModalOpen = true"
-							>
-								Masuk / Daftar
-							</UButton>
-						</div>
+						<UButton
+							v-else
+							color="primary"
+							icon="i-lucide-log-in"
+							class="font-bold"
+							@click="isAuthModalOpen = true"
+						>
+							Masuk / Daftar
+						</UButton>
 					</div>
 				</div>
 			</header>
 
-			<!-- Konten Utama -->
-			<main class="flex-1 max-w-7xl w-full mx-auto px-3 sm:px-6 py-6 sm:py-8">
+			<!-- pb bawah memberi ruang untuk navigasi bawah supaya isi terakhir tidak tertutup -->
+			<main class="flex-1 max-w-6xl w-full mx-auto px-4 sm:px-6 pt-5 sm:pt-8 pb-[calc(6rem+env(safe-area-inset-bottom))] lg:pb-12">
 				<NuxtPage :current-tab="currentTab" @switch-tab="(tab: TabType) => currentTab = tab" />
 			</main>
 
-			<!-- Footer -->
-			<footer class="border-t border-neutral-200/80 dark:border-neutral-800 py-6 text-center text-xs text-muted bg-white/60 dark:bg-neutral-900/60 backdrop-blur-sm">
-				<div class="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-3">
-					<div class="flex items-center gap-2">
-						<span class="font-black text-neutral-800 dark:text-neutral-200">🧩 Petualangan Kata SD</span>
-						<span>•</span>
-						<p>Media Pembelajaran Teka-Teki Silang Interaktif Siswa Sekolah Dasar</p>
-					</div>
-					<p class="text-muted text-[11px]">
-						Mendukung Kurikulum Merdeka Fase A, B, dan C
-					</p>
-				</div>
+			<footer class="hidden lg:block border-t border-default bg-default">
+				<p class="max-w-6xl mx-auto px-6 py-5 text-sm text-muted">
+					Petualangan Kata SD: teka-teki silang untuk siswa kelas 1 sampai 6, mengikuti Kurikulum Merdeka Fase A, B, dan C.
+				</p>
 			</footer>
 
-			<!-- Auth Modal -->
-			<AuthModal v-model:open="isAuthModalOpen" />
+			<!-- Navigasi bawah untuk ponsel dan tablet, tetap dalam jangkauan jempol -->
+			<nav
+				aria-label="Navigasi utama"
+				class="lg:hidden fixed inset-x-0 bottom-0 z-40 border-t border-default bg-default pb-[env(safe-area-inset-bottom)]"
+			>
+				<div class="max-w-xl mx-auto flex items-stretch gap-1 px-2 py-1.5">
+					<UButton
+						v-for="item in navItems"
+						:key="item.tab"
+						:icon="item.icon"
+						:color="currentTab === item.tab ? 'primary' : 'neutral'"
+						:variant="currentTab === item.tab ? 'soft' : 'ghost'"
+						:aria-current="currentTab === item.tab ? 'page' : undefined"
+						class="flex-1 min-w-0 flex-col gap-0.5 h-14 px-1 text-xs font-bold"
+						:ui="{ leadingIcon: 'size-6' }"
+						@click="currentTab = item.tab"
+					>
+						<span class="truncate max-w-full">{{ item.short }}</span>
+					</UButton>
+				</div>
+			</nav>
 
-			<!-- Profile Modal (Edit Profil Siswa & Guru) -->
+			<AuthModal v-model:open="isAuthModalOpen" />
 			<ProfileModal v-model:open="isProfileModalOpen" />
 		</div>
 	</UApp>

@@ -103,13 +103,13 @@ function fillStudentSample() {
 		@update:open="(val) => emit('update:open', val)"
 	>
 		<template #body>
-			<div class="p-4 sm:p-6 space-y-5 bg-white dark:bg-neutral-900 rounded-2xl shadow-2xl">
+			<div class="space-y-5">
 				<!-- Header -->
 				<div class="text-center space-y-1">
-					<div class="w-12 h-12 rounded-2xl bg-amber-500/10 text-amber-500 mx-auto flex items-center justify-center">
-						<UIcon name="i-lucide-user" class="w-6 h-6" />
+					<div class="size-12 rounded-md bg-primary/10 text-primary mx-auto flex items-center justify-center">
+						<UIcon name="i-lucide-user" class="size-6" />
 					</div>
-					<h3 class="text-xl font-black text-neutral-900 dark:text-neutral-100">
+					<h3 class="text-2xl font-extrabold text-highlighted">
 						{{
 							activeTab === 'student_login'
 								? 'Masuk Siswa SD'
@@ -118,7 +118,7 @@ function fillStudentSample() {
 									: 'Masuk Guru & Admin'
 						}}
 					</h3>
-					<p class="text-xs text-muted">
+					<p class="text-base text-muted">
 						{{
 							activeTab === 'student_login'
 								? 'Cukup gunakan NISN dan Tanggal Lahir untuk mulai mengumpulkan XP!'
@@ -130,13 +130,13 @@ function fillStudentSample() {
 				</div>
 
 				<!-- Tab Switches -->
-				<div role="tablist" aria-label="Cara masuk" class="flex items-center gap-1.5 p-1 bg-neutral-100 dark:bg-neutral-800 rounded-xl">
+				<div role="tablist" aria-label="Cara masuk" class="flex items-center gap-1 p-1 bg-elevated rounded-lg">
 					<button
 						type="button"
 						role="tab"
 						:aria-selected="activeTab === 'student_login'"
-						class="flex-1 py-1.5 text-xs font-bold rounded-lg transition-all"
-						:class="activeTab === 'student_login' ? 'bg-white dark:bg-neutral-700 shadow-sm text-warning' : 'text-toned hover:text-highlighted'"
+						class="flex-1 min-h-11 px-2 text-sm font-bold rounded-md transition-colors focus-visible:outline-2 focus-visible:outline-primary"
+						:class="activeTab === 'student_login' ? 'bg-default shadow-sm text-primary' : 'text-toned hover:text-highlighted'"
 						@click="activeTab = 'student_login'; errorMessage = ''"
 					>
 						Masuk Siswa
@@ -145,8 +145,8 @@ function fillStudentSample() {
 						type="button"
 						role="tab"
 						:aria-selected="activeTab === 'student_register'"
-						class="flex-1 py-1.5 text-xs font-bold rounded-lg transition-all"
-						:class="activeTab === 'student_register' ? 'bg-white dark:bg-neutral-700 shadow-sm text-warning' : 'text-toned hover:text-highlighted'"
+						class="flex-1 min-h-11 px-2 text-sm font-bold rounded-md transition-colors focus-visible:outline-2 focus-visible:outline-primary"
+						:class="activeTab === 'student_register' ? 'bg-default shadow-sm text-primary' : 'text-toned hover:text-highlighted'"
 						@click="activeTab = 'student_register'; errorMessage = ''"
 					>
 						Daftar Siswa
@@ -155,8 +155,8 @@ function fillStudentSample() {
 						type="button"
 						role="tab"
 						:aria-selected="activeTab === 'teacher_login'"
-						class="flex-1 py-1.5 text-xs font-bold rounded-lg transition-all"
-						:class="activeTab === 'teacher_login' ? 'bg-white dark:bg-neutral-700 shadow-sm text-warning' : 'text-toned hover:text-highlighted'"
+						class="flex-1 min-h-11 px-2 text-sm font-bold rounded-md transition-colors focus-visible:outline-2 focus-visible:outline-primary"
+						:class="activeTab === 'teacher_login' ? 'bg-default shadow-sm text-primary' : 'text-toned hover:text-highlighted'"
 						@click="activeTab = 'teacher_login'; errorMessage = ''"
 					>
 						Guru / Admin
@@ -164,13 +164,13 @@ function fillStudentSample() {
 				</div>
 
 				<!-- Alert Error -->
-				<div
+				<UAlert
 					v-if="errorMessage"
-					class="p-3 text-xs bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-300 rounded-xl border border-rose-200 dark:border-rose-900 flex items-center gap-2"
-				>
-					<UIcon name="i-lucide-alert-circle" class="w-4 h-4 shrink-0" />
-					<span>{{ errorMessage }}</span>
-				</div>
+					color="error"
+					variant="subtle"
+					icon="i-lucide-circle-alert"
+					:title="errorMessage"
+				/>
 
 				<!-- FORM 1: MASUK SISWA -->
 				<form
@@ -179,7 +179,7 @@ function fillStudentSample() {
 					@submit.prevent="handleStudentLogin"
 				>
 					<div class="space-y-1.5">
-						<label for="authmodal-studentnisn" class="text-xs font-bold text-neutral-700 dark:text-neutral-300">
+						<label for="authmodal-studentnisn" class="block text-sm font-bold text-toned">
 							Nomor Induk Siswa Nasional (NISN)
 						</label>
 						<UInput
@@ -192,8 +192,8 @@ function fillStudentSample() {
 					</div>
 
 					<div class="space-y-1.5">
-						<label for="authmodal-studentbirthdate" class="text-xs font-bold text-neutral-700 dark:text-neutral-300">
-							Tanggal Lahir (Format: YYYY-MM-DD)
+						<label for="authmodal-studentbirthdate" class="block text-sm font-bold text-toned">
+							Tanggal Lahir
 						</label>
 						<UInput
 							id="authmodal-studentbirthdate"
@@ -233,7 +233,7 @@ function fillStudentSample() {
 					@submit.prevent="handleStudentRegister"
 				>
 					<div class="space-y-1">
-						<label for="authmodal-regnisn" class="text-xs font-bold text-neutral-700 dark:text-neutral-300">NISN Siswa</label>
+						<label for="authmodal-regnisn" class="block text-sm font-bold text-toned">NISN Siswa</label>
 						<UInput
 							id="authmodal-regnisn"
 							v-model="regNisn"
@@ -244,7 +244,7 @@ function fillStudentSample() {
 					</div>
 
 					<div class="space-y-1">
-						<label for="authmodal-regname" class="text-xs font-bold text-neutral-700 dark:text-neutral-300">Nama Lengkap</label>
+						<label for="authmodal-regname" class="block text-sm font-bold text-toned">Nama Lengkap</label>
 						<UInput
 							id="authmodal-regname"
 							v-model="regName"
@@ -256,7 +256,7 @@ function fillStudentSample() {
 
 					<div class="grid grid-cols-2 gap-3">
 						<div class="space-y-1">
-							<label for="authmodal-regbirthdate" class="text-xs font-bold text-neutral-700 dark:text-neutral-300">Tanggal Lahir</label>
+							<label for="authmodal-regbirthdate" class="block text-sm font-bold text-toned">Tanggal Lahir</label>
 							<UInput
 								id="authmodal-regbirthdate"
 								v-model="regBirthDate"
@@ -265,7 +265,7 @@ function fillStudentSample() {
 							/>
 						</div>
 						<div class="space-y-1">
-							<label for="authmodal-reggrade" class="text-xs font-bold text-neutral-700 dark:text-neutral-300">Tingkat Kelas</label>
+							<label for="authmodal-reggrade" class="block text-sm font-bold text-toned">Tingkat Kelas</label>
 							<USelect
 								id="authmodal-reggrade"
 								v-model="regGrade"
@@ -276,7 +276,7 @@ function fillStudentSample() {
 					</div>
 
 					<div class="space-y-1">
-						<label for="authmodal-regschool" class="text-xs font-bold text-neutral-700 dark:text-neutral-300">Nama Sekolah</label>
+						<label for="authmodal-regschool" class="block text-sm font-bold text-toned">Nama Sekolah</label>
 						<UInput
 							id="authmodal-regschool"
 							v-model="regSchool"
@@ -303,7 +303,7 @@ function fillStudentSample() {
 					@submit.prevent="handleTeacherLogin"
 				>
 					<div class="space-y-1.5">
-						<label for="authmodal-teacheremail" class="text-xs font-bold text-neutral-700 dark:text-neutral-300">
+						<label for="authmodal-teacheremail" class="block text-sm font-bold text-toned">
 							Email Guru / Admin
 						</label>
 						<UInput
@@ -317,7 +317,7 @@ function fillStudentSample() {
 					</div>
 
 					<div class="space-y-1.5">
-						<label for="authmodal-teacherpin" class="text-xs font-bold text-neutral-700 dark:text-neutral-300">
+						<label for="authmodal-teacherpin" class="block text-sm font-bold text-toned">
 							Kata Sandi / PIN
 						</label>
 						<UInput

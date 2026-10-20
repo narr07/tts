@@ -69,35 +69,34 @@ async function handleSave() {
 		@update:open="(val) => emit('update:open', val)"
 	>
 		<template #body>
-			<div class="p-4 sm:p-6 space-y-5 bg-white dark:bg-neutral-900 rounded-2xl shadow-xl">
+			<div class="space-y-5">
 				<!-- Header -->
 				<div class="flex items-center gap-3">
-					<div class="w-12 h-12 rounded-2xl bg-primary/10 text-primary flex items-center justify-center text-xl shrink-0">
-						<UIcon name="i-lucide-user-pen" class="w-6 h-6" />
+					<div class="size-12 rounded-md bg-primary/10 text-primary flex items-center justify-center shrink-0">
+						<UIcon name="i-lucide-user-pen" class="size-6" />
 					</div>
 					<div>
-						<h3 class="text-lg font-black text-neutral-900 dark:text-neutral-100">
-							Edit Profil Saya
+						<h3 class="text-xl font-extrabold text-highlighted">
+							{{ auth.isStudent ? 'Profil Saya' : 'Edit Profil Saya' }}
 						</h3>
-						<p class="text-xs text-neutral-500 dark:text-neutral-400">
-							{{ auth.isStudent ? 'Sesuaikan nama, sekolah, dan kelas Anda.' : 'Sesuaikan data profil dan kata sandi Anda.' }}
+						<p class="text-sm text-muted">
+							{{ auth.isStudent ? 'Ubah nama, sekolah, dan kelasmu.' : 'Sesuaikan data profil dan kata sandi Anda.' }}
 						</p>
 					</div>
 				</div>
 
-				<!-- Alert Error -->
-				<div
+				<UAlert
 					v-if="errorMessage"
-					class="p-3 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900 text-rose-700 dark:text-rose-300 text-xs font-semibold flex items-center gap-2"
-				>
-					<UIcon name="i-lucide-alert-circle" class="w-4 h-4 shrink-0 text-rose-500" />
-					<span>{{ errorMessage }}</span>
-				</div>
+					color="error"
+					variant="subtle"
+					icon="i-lucide-circle-alert"
+					:title="errorMessage"
+				/>
 
 				<form class="space-y-4" @submit.prevent="handleSave">
 					<!-- Nama Lengkap -->
 					<div class="space-y-1.5">
-						<label for="profilemodal-name" class="text-xs font-bold text-neutral-700 dark:text-neutral-300">
+						<label for="profilemodal-name" class="block text-sm font-bold text-toned">
 							Nama Lengkap
 						</label>
 						<UInput
@@ -112,7 +111,7 @@ async function handleSave() {
 
 					<!-- Asal Sekolah -->
 					<div class="space-y-1.5">
-						<label for="profilemodal-schoolname" class="text-xs font-bold text-neutral-700 dark:text-neutral-300">
+						<label for="profilemodal-schoolname" class="block text-sm font-bold text-toned">
 							Nama Sekolah
 						</label>
 						<UInput
@@ -126,7 +125,7 @@ async function handleSave() {
 
 					<!-- Tingkat Kelas (Hanya untuk Siswa) -->
 					<div v-if="auth.isStudent" class="space-y-1.5">
-						<label for="profilemodal-grade" class="text-xs font-bold text-neutral-700 dark:text-neutral-300">
+						<label for="profilemodal-grade" class="block text-sm font-bold text-toned">
 							Tingkat Kelas SD
 						</label>
 						<USelect
@@ -138,10 +137,10 @@ async function handleSave() {
 					</div>
 
 					<!-- Ubah Kata Sandi / PIN Baru (Opsional) -->
-					<div class="space-y-1.5 pt-2 border-t border-neutral-100 dark:border-neutral-800">
-						<label for="profilemodal-newpassword" class="text-xs font-bold text-neutral-700 dark:text-neutral-300 flex items-center justify-between">
-							<span>Ubah Kata Sandi / PIN</span>
-							<span class="text-[10px] text-muted font-normal">Kosongkan jika tidak ingin diubah</span>
+					<div class="space-y-1.5 pt-3 border-t border-default">
+						<label for="profilemodal-newpassword" class="block text-sm font-bold text-toned">
+							Ubah Kata Sandi / PIN
+							<span class="block text-xs text-muted font-normal">Kosongkan jika tidak ingin diubah</span>
 						</label>
 						<UInput
 							id="profilemodal-newpassword"

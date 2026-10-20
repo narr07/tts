@@ -9,7 +9,12 @@
     "preview": "nuxt preview",
     "postinstall": "nuxt prepare",
     "lint": "eslint .",
-    "typecheck": "nuxt typecheck"
+    "typecheck": "nuxt typecheck",
+    "build:pages": "nuxt build --preset cloudflare_pages",
+    "preview:pages": "nuxt build --preset cloudflare_pages && wrangler pages dev",
+    "deploy:pages": "nuxt build --preset cloudflare_pages && wrangler pages deploy",
+    "db:migrate:d1": "wrangler d1 migrations apply DB --remote --config dist/_worker.js/wrangler.json",
+    "db:export:d1": "bun scripts/export_d1.ts"
   },
   "dependencies": {
     "@libsql/client": "^0.18.0",
@@ -32,6 +37,7 @@
     "drizzle-kit": "latest",
     "eslint": "^10.12.0",
     "typescript": "^5.9.3",
-    "vue-tsc": "latest"
+    "vue-tsc": "latest",
+    "wrangler": "^4.151.3"
   }
 }
